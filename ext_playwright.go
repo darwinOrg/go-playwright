@@ -48,7 +48,12 @@ func (opt *ExtPlaywrightOption) mustGetBrowserPath() string {
 	if opt.BrowserPath != "" {
 		return opt.BrowserPath
 	} else {
-		return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+		chromePath, err := findChromePath()
+		if err != nil {
+			panic(err)
+		}
+
+		return chromePath
 	}
 }
 
