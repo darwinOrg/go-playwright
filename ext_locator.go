@@ -1,6 +1,7 @@
 package extpw
 
 import (
+	dgcoll "github.com/darwinOrg/go-common/collection"
 	dgctx "github.com/darwinOrg/go-common/context"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/playwright-community/playwright-go"
@@ -10,6 +11,13 @@ import (
 type ExtLocator struct {
 	playwright.Locator
 	selectors []string
+}
+
+func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
+	return &ExtLocator{
+		Locator:   l.Locator.Locator(selector),
+		selectors: append(l.selectors, selector),
+	}
 }
 
 func (l *ExtLocator) Exists(ctx *dgctx.DgContext) bool {
@@ -30,7 +38,7 @@ func (l *ExtLocator) MustInnerText(ctx *dgctx.DgContext) string {
 	if err != nil {
 		dglogger.Errorf(ctx, "locator[%s] inner text error: %v", strings.Join(l.selectors, " "), err)
 	}
-	return text
+	return strings.TrimSpace(text)
 }
 
 func (l *ExtLocator) MustTextContent(ctx *dgctx.DgContext) string {
@@ -42,12 +50,69 @@ func (l *ExtLocator) MustTextContent(ctx *dgctx.DgContext) string {
 	if err != nil {
 		dglogger.Errorf(ctx, "locator[%s] text content error: %v", strings.Join(l.selectors, " "), err)
 	}
-	return text
+	return strings.TrimSpace(text)
 }
 
-func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
-	return &ExtLocator{
-		Locator:   l.Locator.Locator(selector),
-		selectors: append(l.selectors, selector),
+func (l *ExtLocator) MustGetAttribute(ctx *dgctx.DgContext, attr string) string {
+	if !l.Exists(ctx) {
+		return ""
 	}
+
+	text, err := l.Locator.GetAttribute(attr)
+	if err != nil {
+		dglogger.Errorf(ctx, "locator[%s] get attribute error: %v", strings.Join(l.selectors, " "), err)
+	}
+	return strings.TrimSpace(text)
+}
+
+func (l *ExtLocator) ExtAll(ctx *dgctx.DgContext) ([]*ExtLocator, error) {
+	if !l.Exists(ctx) {
+		return []*ExtLocator{}, nil
+	}
+
+	allLocators, err := l.Locator.All()
+	if err != nil {
+		dglogger.Errorf(ctx, "locator[%s] all error: %v", strings.Join(l.selectors, " "), err)
+		return nil, err
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator playwright.Locator) *ExtLocator {
+		return &ExtLocator{
+			Locator:   locator,
+			selectors: l.selectors,
+		}
+	}), nil
+}
+
+func (l *ExtLocator) MustAllInnerTexts(ctx *dgctx.DgContext) []string {
+	allLocators, err := l.ExtAll(ctx)
+	if err != nil {
+		return []string{}
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
+		return locator.MustInnerText(ctx)
+	})
+}
+
+func (l *ExtLocator) MustAllTextContents(ctx *dgctx.DgContext) []string {
+	allLocators, err := l.ExtAll(ctx)
+	if err != nil {
+		return []string{}
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
+		return locator.MustTextContent(ctx)
+	})
+}
+
+func (l *ExtLocator) MustAllGetAttributes(ctx *dgctx.DgContext, attr string) []string {
+	allLocators, err := l.ExtAll(ctx)
+	if err != nil {
+		return []string{}
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
+		return locator.MustGetAttribute(ctx, attr)
+	})
 }
