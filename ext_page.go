@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+var (
+	defaultTimeoutMillis = float64(10_000.0)
+)
+
 type ExtPage struct {
 	playwright.Page
 	extBC  *ExtBrowserContext
@@ -144,7 +148,9 @@ func (p *ExtPage) RandomWaitRange(ctx *dgctx.DgContext, min, max int) {
 }
 
 func (p *ExtPage) ExpectResponseText(ctx *dgctx.DgContext, urlOrPredicate string, cb func() error) (string, error) {
-	response, err := p.ExpectResponse(urlOrPredicate, cb)
+	response, err := p.ExpectResponse(urlOrPredicate, cb, playwright.PageExpectResponseOptions{
+		Timeout: &defaultTimeoutMillis,
+	})
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.ExpectResponseText error: %v", err)
 		return "", err
