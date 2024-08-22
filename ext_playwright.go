@@ -9,15 +9,15 @@ import (
 )
 
 var MyBrowserType = struct {
-	Chrome  int
-	Firefox int
-	Webkit  int
-}{0, 1, 2}
+	Chrome  string
+	Firefox string
+	Webkit  string
+}{"chrome", "firefox", "webkit"}
 
 type ExtPlaywrightOption struct {
 	SkipInstallBrowsers bool   `json:"skipInstallBrowsers" mapstructure:"skipInstallBrowsers"`
 	Headless            bool   `json:"headless" mapstructure:"headless"`
-	BrowserType         int    `json:"browserType" mapstructure:"browserType"`
+	BrowserType         string `json:"browserType" mapstructure:"browserType"`
 	Channel             string `json:"channel" mapstructure:"channel"`
 	DriverDirectory     string `json:"driverDirectory" mapstructure:"driverDirectory"`
 	BrowserPath         string `json:"browserPath" mapstructure:"browserPath"`
@@ -61,6 +61,7 @@ func (opt *ExtPlaywrightOption) mustGetBrowserPath() string {
 func newPlaywright(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (*playwright.Playwright, error) {
 	runOption := &playwright.RunOptions{
 		SkipInstallBrowsers: extPwOpt.SkipInstallBrowsers,
+		DriverDirectory:     extPwOpt.DriverDirectory,
 	}
 	pw, err := playwright.Run(runOption)
 	if err != nil {
