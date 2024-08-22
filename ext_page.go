@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	defaultTimeoutMillis = float64(10_000.0)
+	defaultTimeoutMillis = 10_000.0
 )
 
 type ExtPage struct {
