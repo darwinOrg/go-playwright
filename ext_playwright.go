@@ -15,14 +15,15 @@ var MyBrowserType = struct {
 }{0, 1, 2}
 
 type ExtPlaywrightOption struct {
-	SkipInstallBrowsers bool
-	Headless            bool
-	BrowserType         int
-	Channel             string
-	BrowserPath         string
-	UserDataDir         string
-	RemoteDebuggingHost string
-	RemoteDebuggingPort int
+	SkipInstallBrowsers bool   `json:"skipInstallBrowsers" mapstructure:"skipInstallBrowsers"`
+	Headless            bool   `json:"headless" mapstructure:"headless"`
+	BrowserType         int    `json:"browserType" mapstructure:"browserType"`
+	Channel             string `json:"channel" mapstructure:"channel"`
+	DriverDirectory     string `json:"driverDirectory" mapstructure:"driverDirectory"`
+	BrowserPath         string `json:"browserPath" mapstructure:"browserPath"`
+	UserDataDir         string `json:"userDataDir" mapstructure:"userDataDir"`
+	RemoteDebuggingHost string `json:"remoteDebuggingHost" mapstructure:"remoteDebuggingHost"`
+	RemoteDebuggingPort int    `json:"remoteDebuggingPort" mapstructure:"remoteDebuggingPort"`
 }
 
 func (opt *ExtPlaywrightOption) getBrowserType(pw *playwright.Playwright) playwright.BrowserType {
