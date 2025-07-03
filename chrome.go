@@ -72,7 +72,7 @@ func findChromeInRegistry() (string, error) {
 
 	// 校验路径有效性
 	if _, err := os.Stat(chromePath); err != nil {
-		return "", fmt.Errorf("Chrome path from registry is invalid: %v", err)
+		return "", fmt.Errorf("chrome path from registry is invalid: %v", err)
 	}
 
 	// 返回完整路径
@@ -85,7 +85,7 @@ func findChromeOnMacOS() (string, error) {
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	}
-	return "", errors.New("Chrome not found in default location")
+	return "", errors.New("chrome not found in default location")
 }
 
 // findChromeOnUnixLike searches for the Chrome executable in standard system directories.
@@ -110,5 +110,5 @@ func findChromeOnUnixLike() (string, error) {
 		}
 	}
 
-	return "", errors.New("Chrome not found in standard system directories")
+	return "", errors.New("chrome not found in standard system directories")
 }
