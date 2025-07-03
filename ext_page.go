@@ -82,9 +82,14 @@ func (p *ExtPage) CloseAll() {
 }
 
 func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) error {
-	return p.Navigate(ctx, url, playwright.PageGotoOptions{
+	err := p.Navigate(ctx, url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateLoad,
 	})
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.WaitUntilStateLoad error: %v | url: %s", err, url)
+		return err
+	}
+	return nil
 }
 
 func (p *ExtPage) WaitForLoadStateLoad(ctx *dgctx.DgContext) error {
@@ -95,7 +100,7 @@ func (p *ExtPage) WaitForLoadStateLoad(ctx *dgctx.DgContext) error {
 		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
 		return err
 	}
-	return err
+	return nil
 }
 
 func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
