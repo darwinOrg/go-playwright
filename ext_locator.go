@@ -116,3 +116,24 @@ func (l *ExtLocator) MustAllGetAttributes(ctx *dgctx.DgContext, attr string) []s
 		return locator.MustGetAttribute(ctx, attr)
 	})
 }
+
+func (l *ExtLocator) MustClick(ctx *dgctx.DgContext) {
+	err := l.Click()
+	if err != nil {
+		dglogger.Errorf(ctx, "locator[%s] click error: %v", strings.Join(l.selectors, " "), err)
+	}
+}
+
+func (l *ExtLocator) HasClass(ctx *dgctx.DgContext, class string) bool {
+	cls := l.MustGetAttribute(ctx, "class")
+	if cls == "" {
+		return false
+	}
+
+	if strings.Contains(cls, " ") {
+		classes := strings.Split(cls, " ")
+		return dgcoll.Contains(classes, class)
+	}
+
+	return cls == class
+}
