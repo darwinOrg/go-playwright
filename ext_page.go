@@ -85,6 +85,7 @@ func (p *ExtPage) CloseAll() {
 }
 
 func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) error {
+	p.CheckSuspend(ctx)
 	err := p.Navigate(ctx, url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateLoad,
 	})
@@ -118,6 +119,7 @@ func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
 }
 
 func (p *ExtPage) Navigate(ctx *dgctx.DgContext, url string, options ...playwright.PageGotoOptions) error {
+	p.CheckSuspend(ctx)
 	_, err := p.Goto(url, options...)
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.Goto url[%s] error: %v", url, err)
@@ -127,6 +129,7 @@ func (p *ExtPage) Navigate(ctx *dgctx.DgContext, url string, options ...playwrig
 }
 
 func (p *ExtPage) ReloadWithLoadedState(ctx *dgctx.DgContext) error {
+	p.CheckSuspend(ctx)
 	_, err := p.Reload(playwright.PageReloadOptions{
 		WaitUntil: playwright.WaitUntilStateLoad,
 	})
@@ -157,7 +160,6 @@ func (p *ExtPage) RandomWaitRange(ctx *dgctx.DgContext, min, max int) {
 
 func (p *ExtPage) ExpectResponseText(ctx *dgctx.DgContext, urlOrPredicate string, cb func() error) (string, error) {
 	p.CheckSuspend(ctx)
-
 	response, err := p.ExpectResponse(urlOrPredicate, cb, playwright.PageExpectResponseOptions{
 		Timeout: &defaultTimeoutMillis,
 	})
@@ -226,7 +228,6 @@ func (p *ExtPage) Exists(ctx *dgctx.DgContext, selector string) bool {
 
 func (p *ExtPage) Click(ctx *dgctx.DgContext, selector string) error {
 	p.CheckSuspend(ctx)
-
 	locator := p.ExtLocator(selector)
 	if locator.Exists(ctx) {
 		err := locator.Click()

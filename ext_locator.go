@@ -122,7 +122,6 @@ func (l *ExtLocator) MustAllGetAttributes(ctx *dgctx.DgContext, attr string) []s
 
 func (l *ExtLocator) MustClick(ctx *dgctx.DgContext) {
 	l.CheckSuspend(ctx)
-
 	err := l.Click()
 	if err != nil {
 		dglogger.Errorf(ctx, "locator[%s] click error: %v", strings.Join(l.selectors, " "), err)
