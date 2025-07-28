@@ -15,8 +15,9 @@ var (
 
 type ExtPage struct {
 	playwright.Page
-	extBC  *ExtBrowserContext
-	locked bool
+	extBC     *ExtBrowserContext
+	locked    bool
+	suspended bool
 }
 
 func NewDebugExtPage(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (*ExtPage, error) {
@@ -51,6 +52,8 @@ func (p *ExtPage) NewExtPage(ctx *dgctx.DgContext) (*ExtPage, error) {
 }
 
 func (p *ExtPage) ExpectExtPage(ctx *dgctx.DgContext, cb func() error) (*ExtPage, error) {
+	p.CheckSuspend(ctx)
+
 	page, err := p.extBC.ExpectPage(cb)
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.ExpectExtPage error: %v", err)
@@ -153,6 +156,8 @@ func (p *ExtPage) RandomWaitRange(ctx *dgctx.DgContext, min, max int) {
 }
 
 func (p *ExtPage) ExpectResponseText(ctx *dgctx.DgContext, urlOrPredicate string, cb func() error) (string, error) {
+	p.CheckSuspend(ctx)
+
 	response, err := p.ExpectResponse(urlOrPredicate, cb, playwright.PageExpectResponseOptions{
 		Timeout: &defaultTimeoutMillis,
 	})
@@ -197,6 +202,7 @@ func (p *ExtPage) ExtLocator(selectors ...string) *ExtLocator {
 	}
 
 	return &ExtLocator{
+		extPage:   p,
 		Locator:   locator,
 		selectors: selectors,
 	}
@@ -219,6 +225,8 @@ func (p *ExtPage) Exists(ctx *dgctx.DgContext, selector string) bool {
 }
 
 func (p *ExtPage) Click(ctx *dgctx.DgContext, selector string) error {
+	p.CheckSuspend(ctx)
+
 	locator := p.ExtLocator(selector)
 	if locator.Exists(ctx) {
 		err := locator.Click()
@@ -229,4 +237,18 @@ func (p *ExtPage) Click(ctx *dgctx.DgContext, selector string) error {
 	}
 
 	return nil
+}
+
+func (p *ExtPage) Suspend() {
+	p.suspended = true
+}
+
+func (p *ExtPage) Continue() {
+	p.suspended = false
+}
+
+func (p *ExtPage) CheckSuspend(ctx *dgctx.DgContext) {
+	for p.suspended {
+		p.RandomWaitMiddle(ctx)
+	}
 }

@@ -9,12 +9,14 @@ import (
 )
 
 type ExtLocator struct {
+	extPage *ExtPage
 	playwright.Locator
 	selectors []string
 }
 
 func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
 	return &ExtLocator{
+		extPage:   l.extPage,
 		Locator:   l.Locator.Locator(selector),
 		selectors: append(l.selectors, selector),
 	}
@@ -78,6 +80,7 @@ func (l *ExtLocator) ExtAll(ctx *dgctx.DgContext) ([]*ExtLocator, error) {
 
 	return dgcoll.MapToList(allLocators, func(locator playwright.Locator) *ExtLocator {
 		return &ExtLocator{
+			extPage:   l.extPage,
 			Locator:   locator,
 			selectors: l.selectors,
 		}
@@ -118,6 +121,8 @@ func (l *ExtLocator) MustAllGetAttributes(ctx *dgctx.DgContext, attr string) []s
 }
 
 func (l *ExtLocator) MustClick(ctx *dgctx.DgContext) {
+	l.CheckSuspend(ctx)
+
 	err := l.Click()
 	if err != nil {
 		dglogger.Errorf(ctx, "locator[%s] click error: %v", strings.Join(l.selectors, " "), err)
@@ -136,4 +141,18 @@ func (l *ExtLocator) HasClass(ctx *dgctx.DgContext, class string) bool {
 	}
 
 	return cls == class
+}
+
+func (l *ExtLocator) Suspend() {
+	l.extPage.suspended = true
+}
+
+func (l *ExtLocator) Continue() {
+	l.extPage.suspended = false
+}
+
+func (l *ExtLocator) CheckSuspend(ctx *dgctx.DgContext) {
+	for l.extPage.suspended {
+		l.extPage.RandomWaitMiddle(ctx)
+	}
 }
