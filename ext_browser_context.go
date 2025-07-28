@@ -175,9 +175,6 @@ func (bc *ExtBrowserContext) Close() {
 func (bc *ExtBrowserContext) GetOrNewExtPage(ctx *dgctx.DgContext) (*ExtPage, error) {
 	var openedPages []*ExtPage
 	if len(bc.extPages) > 0 {
-		bc.pw.Lock()
-		defer bc.pw.Unlock()
-
 		for _, extPage := range bc.extPages {
 			if extPage.IsClosed() {
 				extPage.Close()
