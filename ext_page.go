@@ -3,9 +3,11 @@ package extpw
 import (
 	dgctx "github.com/darwinOrg/go-common/context"
 	dgerr "github.com/darwinOrg/go-common/enums/error"
+	"github.com/darwinOrg/go-common/utils"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/playwright-community/playwright-go"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -84,6 +86,20 @@ func (p *ExtPage) CloseAll() {
 	p.extBC.Close()
 }
 
+func (p *ExtPage) ReNewPageByError(err error) {
+	if strings.Contains(err.Error(), "target closed") {
+		p.Close()
+		_ = utils.Retry(3, time.Second, func() error {
+			newPage, ne := p.extBC.NewPage()
+			if ne != nil {
+				return ne
+			}
+			p.Page = newPage
+			return nil
+		})
+	}
+}
+
 func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) error {
 	p.CheckSuspend(ctx)
 	err := p.Navigate(ctx, url, playwright.PageGotoOptions{
@@ -96,33 +112,12 @@ func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) erro
 	return nil
 }
 
-func (p *ExtPage) WaitForLoadStateLoad(ctx *dgctx.DgContext) error {
-	err := p.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
-		State: playwright.LoadStateLoad,
-	})
-	if err != nil {
-		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
-		return err
-	}
-	return nil
-}
-
-func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
-	err := p.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
-		State: playwright.LoadStateDomcontentloaded,
-	})
-	if err != nil {
-		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
-		return err
-	}
-	return err
-}
-
 func (p *ExtPage) Navigate(ctx *dgctx.DgContext, url string, options ...playwright.PageGotoOptions) error {
 	p.CheckSuspend(ctx)
 	_, err := p.Goto(url, options...)
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.Goto url[%s] error: %v", url, err)
+		p.ReNewPageByError(err)
 		return err
 	}
 	return nil
@@ -135,9 +130,34 @@ func (p *ExtPage) ReloadWithLoadedState(ctx *dgctx.DgContext) error {
 	})
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.Reload url[%s] error: %v", p.URL(), err)
+		p.ReNewPageByError(err)
 		return err
 	}
 	return nil
+}
+
+func (p *ExtPage) WaitForLoadStateLoad(ctx *dgctx.DgContext) error {
+	err := p.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateLoad,
+	})
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
+		p.ReNewPageByError(err)
+		return err
+	}
+	return nil
+}
+
+func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
+	err := p.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateDomcontentloaded,
+	})
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
+		p.ReNewPageByError(err)
+		return err
+	}
+	return err
 }
 
 func (p *ExtPage) RandomWaitShort(ctx *dgctx.DgContext) {

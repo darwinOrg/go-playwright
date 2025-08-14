@@ -3,7 +3,7 @@ module github.com/darwinOrg/go-playwright
 go 1.23.1
 
 require (
-	github.com/darwinOrg/go-common v0.2.0
+	github.com/darwinOrg/go-common v0.2.3
 	github.com/darwinOrg/go-logger v0.0.12
 	github.com/go-ole/go-ole v1.3.0
 	github.com/playwright-community/playwright-go v0.5200.0

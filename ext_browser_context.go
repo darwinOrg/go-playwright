@@ -66,10 +66,35 @@ func ConnectDebugExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywright
 	browser, err := connectOverCDP(pw, extPwOpt)
 	if err != nil {
 		dglogger.Errorf(ctx, "could not connect over CDP: %v", err)
+		// 确保在连接失败时清理资源
+		_ = pw.Stop()
 		return nil, err
 	}
 
-	return buildExtBrowserContext(ctx, pw, pw.Chromium, browser, nil)
+	// 添加检查确保浏览器连接有效
+	if browser == nil {
+		dglogger.Error(ctx, "browser connection is nil")
+		_ = pw.Stop()
+		return nil, fmt.Errorf("failed to establish browser connection")
+	}
+
+	// 检查浏览器是否已经关闭
+	if browser.IsConnected() == false {
+		dglogger.Error(ctx, "browser is not connected")
+		_ = browser.Close()
+		_ = pw.Stop()
+		return nil, fmt.Errorf("browser is not connected")
+	}
+
+	extBrowserContext, err := buildExtBrowserContext(ctx, pw, pw.Chromium, browser, nil)
+	if err != nil {
+		dglogger.Errorf(ctx, "could not build ext browser context: %v", err)
+		_ = browser.Close()
+		_ = pw.Stop()
+		return nil, err
+	}
+
+	return extBrowserContext, nil
 }
 
 func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (*ExtBrowserContext, error) {
@@ -119,6 +144,11 @@ func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (
 
 func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, browserType playwright.BrowserType,
 	browser playwright.Browser, browserContext playwright.BrowserContext) (*ExtBrowserContext, error) {
+
+	if pw == nil {
+		return nil, fmt.Errorf("playwright instance is nil")
+	}
+
 	if browserType == nil {
 		browserType = pw.Chromium
 	}
@@ -133,6 +163,11 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 			}
 		}
 
+		// 检查浏览器连接状态
+		if !browser.IsConnected() {
+			return nil, fmt.Errorf("browser is not connected")
+		}
+
 		browserContexts := browser.Contexts()
 		if len(browserContexts) > 0 {
 			browserContext = browserContexts[0]
@@ -144,6 +179,11 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 				return nil, err
 			}
 		}
+	}
+
+	// 检查 browserContext 是否有效
+	if browserContext == nil {
+		return nil, fmt.Errorf("browser context is nil")
 	}
 
 	extBC := &ExtBrowserContext{
