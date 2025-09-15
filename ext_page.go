@@ -1,14 +1,15 @@
 package extpw
 
 import (
+	"math/rand"
+	"strings"
+	"time"
+
 	dgctx "github.com/darwinOrg/go-common/context"
 	dgerr "github.com/darwinOrg/go-common/enums/error"
 	"github.com/darwinOrg/go-common/utils"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/playwright-community/playwright-go"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 var (
@@ -158,6 +159,19 @@ func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
 		return err
 	}
 	return err
+}
+
+func (p *ExtPage) WaitForSelectorStateVisible(ctx *dgctx.DgContext, selector string) error {
+	_, err := p.WaitForSelector(selector, playwright.PageWaitForSelectorOptions{
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: playwright.Float(defaultTimeoutMillis),
+	})
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.WaitForSelector error: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func (p *ExtPage) RandomWaitShort(ctx *dgctx.DgContext) {
