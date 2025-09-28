@@ -3,14 +3,81 @@ package extpw
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 )
+
+func StartChrome() (*exec.Cmd, error) {
+	chrome, err := FindChromePath()
+	if err != nil {
+		return nil, err
+	}
+
+	homeDir, _ := os.UserHomeDir()
+	cmd := exec.Command(chrome,
+		"--remote-debugging-port=9222",
+		"--no-first-run",
+		"--no-default-browser-check",
+		"--disable-gpu",
+		"--disable-extensions",
+		"--disable-plugins",
+		"--disable-sync",
+		"--user-data-dir="+homeDir+"/ChromeProfile",
+		// 静默日志输出的关键参数
+		"--log-level=3",                     // 只显示致命错误
+		"--silent-startup",                  // 静默启动
+		"--disable-dev-shm-usage",           // 减少崩溃
+		"--disable-logging",                 // 禁用日志记录
+		"--disable-ipc-flooding-protection", // 减少日志
+	)
+
+	// 将 stdout 和 stderr 重定向到空设备
+	var nullWriter *os.File
+	if runtime.GOOS == "windows" {
+		nullWriter, _ = os.OpenFile("NUL", os.O_WRONLY, 0)
+	} else {
+		nullWriter, _ = os.OpenFile("/dev/null", os.O_WRONLY, 0)
+	}
+	cmd.Stdout = nullWriter
+	cmd.Stderr = nullWriter
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	log.Printf("Started Chrome with PID: %d", cmd.Process.Pid)
+	return cmd, nil
+}
+
+func CloseChrome(chromeCmd *exec.Cmd) {
+	if chromeCmd != nil && chromeCmd.Process != nil {
+		if runtime.GOOS == "windows" {
+			_ = chromeCmd.Process.Kill()
+		} else {
+			_ = chromeCmd.Process.Signal(syscall.SIGTERM)
+		}
+
+		done := make(chan error, 1)
+		go func() { done <- chromeCmd.Wait() }()
+
+		select {
+		case <-done:
+			log.Println("Chrome 已退出。")
+		case <-time.After(5 * time.Second):
+			log.Println("强制终止 Chrome...")
+			_ = chromeCmd.Process.Kill()
+		}
+	}
+}
 
 // FindChromePath searches for the Google Chrome executable on different operating systems.
 func FindChromePath() (string, error) {
