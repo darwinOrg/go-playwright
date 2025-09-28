@@ -1,11 +1,12 @@
 package extpw
 
 import (
+	"strings"
+
 	dgcoll "github.com/darwinOrg/go-common/collection"
 	dgctx "github.com/darwinOrg/go-common/context"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/playwright-community/playwright-go"
-	"strings"
 )
 
 type ExtLocator struct {

@@ -3,16 +3,17 @@ package extpw
 import (
 	"errors"
 	"fmt"
-	"github.com/go-ole/go-ole"
-	"github.com/go-ole/go-ole/oleutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/go-ole/go-ole"
+	"github.com/go-ole/go-ole/oleutil"
 )
 
-// findChromePath searches for the Google Chrome executable on different operating systems.
-func findChromePath() (string, error) {
+// FindChromePath searches for the Google Chrome executable on different operating systems.
+func FindChromePath() (string, error) {
 	switch runtime.GOOS {
 	case "windows":
 		return findChromeOnWindows()

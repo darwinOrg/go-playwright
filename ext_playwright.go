@@ -2,10 +2,11 @@ package extpw
 
 import (
 	"fmt"
+	"net"
+
 	dgctx "github.com/darwinOrg/go-common/context"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/playwright-community/playwright-go"
-	"net"
 )
 
 var MyBrowserType = struct {
@@ -49,7 +50,7 @@ func (opt *ExtPlaywrightOption) mustGetBrowserPath() string {
 	if opt.BrowserPath != "" {
 		return opt.BrowserPath
 	} else {
-		chromePath, err := findChromePath()
+		chromePath, err := FindChromePath()
 		if err != nil {
 			panic(err)
 		}
