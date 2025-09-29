@@ -2,9 +2,9 @@ package extpw
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -21,30 +21,12 @@ import (
 )
 
 const (
-	cdpURL          = "http://localhost:9222"
-	cdpWebSocketURL = "ws://localhost:9222/devtools/browser"
+	defaultCdpURL = "http://localhost:9222"
 )
 
-//type BrowserInfo struct {
-//	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
-//}
-//
-//func getBrowserWebSocketURL() (string, error) {
-//	resp, err := http.Get("http://localhost:9222/json/version")
-//	if err != nil {
-//		return "", err
-//	}
-//	defer func() {
-//		_ = resp.Body.Close()
-//	}()
-//
-//	var info BrowserInfo
-//	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-//		return "", err
-//	}
-//
-//	return info.WebSocketDebuggerURL, nil
-//}
+type BrowserInfo struct {
+	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+}
 
 func StartChrome() (*exec.Cmd, error) {
 	chrome, err := FindChromePath()
@@ -90,15 +72,13 @@ func StartChrome() (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func ShutdownChrome(cmd *exec.Cmd) {
-	// 尝试 1: CDP HTTP close
-	if err := gracefulCloseChrome(); err == nil {
-		log.Println("通过 /json/close 成功关闭")
-		return
+func ShutdownChrome(cmd *exec.Cmd, baseURL string) {
+	if baseURL == "" {
+		baseURL = defaultCdpURL
 	}
 
-	// 尝试 2: WebSocket Browser.close
-	if err := closeChromeViaCDP(); err == nil {
+	// WebSocket Browser.close
+	if err := closeChromeViaCDP(baseURL); err == nil {
 		log.Println("通过 Browser.close 成功关闭")
 		return
 	}
@@ -108,41 +88,15 @@ func ShutdownChrome(cmd *exec.Cmd) {
 	gracefulShutdown(cmd)
 }
 
-// gracefulCloseChrome 通过 CDP 命令优雅关闭 Chrome
-func gracefulCloseChrome() error {
-	url := cdpURL + "/json/version"
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Printf(fmt.Sprintf("无法连接到 CDP: %v", err))
-		return fmt.Errorf("无法连接到 CDP: %v", err)
-	}
-	_ = resp.Body.Close()
-
-	// 发送 Browser.close 命令
-	closeURL := cdpURL + "/json/close"
-	resp, err = http.Post(closeURL, "text/plain", nil)
-	if err != nil {
-		log.Printf(fmt.Sprintf("发送关闭命令失败 CDP: %v", err))
-		return fmt.Errorf("发送关闭命令失败: %v", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		log.Printf(fmt.Sprintf("关闭失败，状态码: %d, 响应: %s", resp.StatusCode, string(body)))
-		return fmt.Errorf("关闭失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
-	}
-
-	log.Println("Chrome 已收到关闭命令，正在优雅退出...")
-	return nil
-}
-
 // closeChromeViaCDP 使用 WebSocket 发送 Browser.close
-func closeChromeViaCDP() error {
+func closeChromeViaCDP(baseURL string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	cdpWebSocketURL, err := getBrowserWebSocketURL(baseURL)
+	if err != nil {
+		return err
+	}
 
 	conn, _, err := websocket.DefaultDialer.DialContext(ctx, cdpWebSocketURL, nil)
 	if err != nil {
@@ -166,6 +120,25 @@ func closeChromeViaCDP() error {
 
 	log.Println("已发送 Browser.close 命令")
 	return nil
+}
+
+func getBrowserWebSocketURL(baseURL string) (string, error) {
+	resp, err := http.Get(baseURL + "/json/version")
+	if err != nil {
+		log.Printf(fmt.Sprintf(baseURL+"/json/version get error: %v", err))
+		return "", err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	var info BrowserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		log.Printf(fmt.Sprintf("json.NewDecoder(resp.Body).Decode error: %v", err))
+		return "", err
+	}
+
+	return info.WebSocketDebuggerURL, nil
 }
 
 func gracefulShutdown(cmd *exec.Cmd) {
@@ -192,7 +165,7 @@ func gracefulShutdown(cmd *exec.Cmd) {
 	select {
 	case <-done:
 		log.Println("Chrome 已优雅退出")
-	case <-time.After(8 * time.Second):
+	case <-time.After(10 * time.Second):
 		log.Println("超时，强制终止")
 		_ = cmd.Process.Kill()
 	}
