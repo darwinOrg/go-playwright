@@ -3,7 +3,9 @@ package extpw
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +17,8 @@ import (
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 )
+
+const cdpURL = "http://localhost:9222"
 
 func StartChrome() (*exec.Cmd, error) {
 	chrome, err := FindChromePath()
@@ -58,25 +62,63 @@ func StartChrome() (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func CloseChrome(chromeCmd *exec.Cmd) {
-	if chromeCmd != nil && chromeCmd.Process != nil {
+func ShutdownChromeGracefully(cmd *exec.Cmd) {
+	log.Println("尝试优雅关闭 Chrome...")
+
+	// 1. 优先通过 CDP 关闭
+	if err := gracefulCloseChrome(); err != nil {
+		log.Printf("CDP 关闭失败: %v，尝试发送 SIGTERM...", err)
+
+		// 2. 发送 SIGTERM
 		if runtime.GOOS == "windows" {
-			_ = chromeCmd.Process.Kill()
+			_ = cmd.Process.Kill() // Windows 无 SIGTERM
 		} else {
-			_ = chromeCmd.Process.Signal(syscall.SIGTERM)
-		}
-
-		done := make(chan error, 1)
-		go func() { done <- chromeCmd.Wait() }()
-
-		select {
-		case <-done:
-			log.Println("Chrome 已退出。")
-		case <-time.After(5 * time.Second):
-			log.Println("强制终止 Chrome...")
-			_ = chromeCmd.Process.Kill()
+			_ = cmd.Process.Signal(syscall.SIGTERM)
 		}
 	}
+
+	// 3. 等待退出
+	done := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("Chrome 已优雅退出")
+	case <-time.After(8 * time.Second):
+		log.Println("超时，强制终止")
+		_ = cmd.Process.Kill()
+	}
+}
+
+// gracefulCloseChrome 通过 CDP 命令优雅关闭 Chrome
+func gracefulCloseChrome() error {
+	url := cdpURL + "/json/version"
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("无法连接到 CDP: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	// 发送 Browser.close 命令
+	closeURL := cdpURL + "/json/close"
+	resp, err = http.Post(closeURL, "text/plain", nil)
+	if err != nil {
+		return fmt.Errorf("发送关闭命令失败: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("关闭失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+	}
+
+	log.Println("Chrome 已收到关闭命令，正在优雅退出...")
+	return nil
 }
 
 // FindChromePath searches for the Google Chrome executable on different operating systems.
