@@ -29,6 +29,8 @@ func StartChrome() (*exec.Cmd, error) {
 	homeDir, _ := os.UserHomeDir()
 	cmd := exec.Command(chrome,
 		"--remote-debugging-port=9222",
+		"--remote-allow-origins=*",
+		"--remote-debugging-address=0.0.0.0", // 可选：允许外部访问
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-gpu",
