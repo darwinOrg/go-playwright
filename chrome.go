@@ -28,13 +28,14 @@ type BrowserInfo struct {
 	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
 }
 
-func StartChrome() (*exec.Cmd, error) {
+func StartChrome() (*exec.Cmd, string, error) {
 	chrome, err := FindChromePath()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	homeDir, _ := os.UserHomeDir()
+	userDataDir := homeDir + "/ChromeProfile"
 	cmd := exec.Command(chrome,
 		"--remote-debugging-port=9222",
 		"--remote-allow-origins=*",
@@ -45,7 +46,7 @@ func StartChrome() (*exec.Cmd, error) {
 		"--disable-extensions",
 		"--disable-plugins",
 		"--disable-sync",
-		"--user-data-dir="+homeDir+"/ChromeProfile",
+		"--user-data-dir="+userDataDir,
 		// 静默日志输出的关键参数
 		"--log-level=3",                     // 只显示致命错误
 		"--silent-startup",                  // 静默启动
@@ -65,11 +66,11 @@ func StartChrome() (*exec.Cmd, error) {
 	cmd.Stderr = nullWriter
 
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	log.Printf("Started Chrome with PID: %d", cmd.Process.Pid)
-	return cmd, nil
+	return cmd, userDataDir, nil
 }
 
 func ShutdownChrome(cmd *exec.Cmd, baseURL string) {

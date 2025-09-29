@@ -6,7 +6,7 @@ import (
 )
 
 func TestStartChrome(t *testing.T) {
-	chromeCmd, _ := StartChrome()
+	chromeCmd, _, _ := StartChrome()
 	time.Sleep(2 * time.Second)
 	ShutdownChrome(chromeCmd, "")
 }
