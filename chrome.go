@@ -1,6 +1,7 @@
 package extpw
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,9 +17,34 @@ import (
 
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
+	"github.com/gorilla/websocket"
 )
 
-const cdpURL = "http://localhost:9222"
+const (
+	cdpURL          = "http://localhost:9222"
+	cdpWebSocketURL = "ws://localhost:9222/devtools/browser"
+)
+
+//type BrowserInfo struct {
+//	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+//}
+//
+//func getBrowserWebSocketURL() (string, error) {
+//	resp, err := http.Get("http://localhost:9222/json/version")
+//	if err != nil {
+//		return "", err
+//	}
+//	defer func() {
+//		_ = resp.Body.Close()
+//	}()
+//
+//	var info BrowserInfo
+//	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+//		return "", err
+//	}
+//
+//	return info.WebSocketDebuggerURL, nil
+//}
 
 func StartChrome() (*exec.Cmd, error) {
 	chrome, err := FindChromePath()
@@ -64,35 +90,22 @@ func StartChrome() (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func ShutdownChromeGracefully(cmd *exec.Cmd) {
-	log.Println("尝试优雅关闭 Chrome...")
-
-	// 1. 优先通过 CDP 关闭
-	if err := gracefulCloseChrome(); err != nil {
-		log.Printf("CDP 关闭失败: %v，尝试发送 SIGTERM...", err)
-
-		// 2. 发送 SIGTERM
-		if runtime.GOOS == "windows" {
-			_ = cmd.Process.Kill() // Windows 无 SIGTERM
-		} else {
-			_ = cmd.Process.Signal(syscall.SIGTERM)
-		}
+func ShutdownChrome(cmd *exec.Cmd) {
+	// 尝试 1: CDP HTTP close
+	if err := gracefulCloseChrome(); err == nil {
+		log.Println("通过 /json/close 成功关闭")
+		return
 	}
 
-	// 3. 等待退出
-	done := make(chan struct{})
-	go func() {
-		_ = cmd.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		log.Println("Chrome 已优雅退出")
-	case <-time.After(8 * time.Second):
-		log.Println("超时，强制终止")
-		_ = cmd.Process.Kill()
+	// 尝试 2: WebSocket Browser.close
+	if err := closeChromeViaCDP(); err == nil {
+		log.Println("通过 Browser.close 成功关闭")
+		return
 	}
+
+	// 最终方案: SIGTERM
+	log.Println("CDP 关闭失败，回退到 SIGTERM...")
+	gracefulShutdown(cmd)
 }
 
 // gracefulCloseChrome 通过 CDP 命令优雅关闭 Chrome
@@ -121,6 +134,63 @@ func gracefulCloseChrome() error {
 
 	log.Println("Chrome 已收到关闭命令，正在优雅退出...")
 	return nil
+}
+
+// closeChromeViaCDP 使用 WebSocket 发送 Browser.close
+func closeChromeViaCDP() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, cdpWebSocketURL, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	// 发送 Browser.close 命令
+	closeCmd := `{
+		"id": 1,
+		"method": "Browser.close"
+	}`
+
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(closeCmd)); err != nil {
+		return err
+	}
+
+	log.Println("已发送 Browser.close 命令")
+	return nil
+}
+
+func gracefulShutdown(cmd *exec.Cmd) {
+	if cmd.Process == nil {
+		log.Println("Chrome 进程不存在")
+		return
+	}
+
+	log.Println("发送 SIGTERM 以优雅关闭 Chrome...")
+	if runtime.GOOS == "windows" {
+		// Windows 不支持 SIGTERM，尝试其他方式或直接 Kill
+		_ = cmd.Process.Kill()
+	} else {
+		_ = cmd.Process.Signal(syscall.SIGTERM)
+	}
+
+	// 等待退出
+	done := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("Chrome 已优雅退出")
+	case <-time.After(8 * time.Second):
+		log.Println("超时，强制终止")
+		_ = cmd.Process.Kill()
+	}
 }
 
 // FindChromePath searches for the Google Chrome executable on different operating systems.

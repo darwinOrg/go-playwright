@@ -6,6 +6,7 @@ require (
 	github.com/darwinOrg/go-common v0.2.16
 	github.com/darwinOrg/go-logger v0.0.15
 	github.com/go-ole/go-ole v1.3.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/playwright-community/playwright-go v0.5200.0
 )
 
