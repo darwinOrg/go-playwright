@@ -113,6 +113,7 @@ func gracefulCloseChrome() error {
 	url := cdpURL + "/json/version"
 	resp, err := http.Get(url)
 	if err != nil {
+		log.Printf(fmt.Sprintf("无法连接到 CDP: %v", err))
 		return fmt.Errorf("无法连接到 CDP: %v", err)
 	}
 	_ = resp.Body.Close()
@@ -121,6 +122,7 @@ func gracefulCloseChrome() error {
 	closeURL := cdpURL + "/json/close"
 	resp, err = http.Post(closeURL, "text/plain", nil)
 	if err != nil {
+		log.Printf(fmt.Sprintf("发送关闭命令失败 CDP: %v", err))
 		return fmt.Errorf("发送关闭命令失败: %v", err)
 	}
 	defer func() {
@@ -129,6 +131,7 @@ func gracefulCloseChrome() error {
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
+		log.Printf(fmt.Sprintf("关闭失败，状态码: %d, 响应: %s", resp.StatusCode, string(body)))
 		return fmt.Errorf("关闭失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
 	}
 
@@ -143,6 +146,7 @@ func closeChromeViaCDP() error {
 
 	conn, _, err := websocket.DefaultDialer.DialContext(ctx, cdpWebSocketURL, nil)
 	if err != nil {
+		log.Printf(fmt.Sprintf("websocket.DefaultDialer.DialContext error: %v", err))
 		return err
 	}
 	defer func() {
@@ -156,6 +160,7 @@ func closeChromeViaCDP() error {
 	}`
 
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(closeCmd)); err != nil {
+		log.Printf(fmt.Sprintf("conn.WriteMessage error: %v", err))
 		return err
 	}
 
