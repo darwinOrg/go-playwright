@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -29,13 +30,18 @@ type BrowserInfo struct {
 }
 
 func StartChrome() (*exec.Cmd, string, error) {
+	homeDir, _ := os.UserHomeDir()
+	userDataDir := homeDir + "/ChromeProfile"
+
+	if isPortOpen("localhost", 9222) {
+		return nil, userDataDir, nil
+	}
+
 	chrome, err := FindChromePath()
 	if err != nil {
 		return nil, "", err
 	}
 
-	homeDir, _ := os.UserHomeDir()
-	userDataDir := homeDir + "/ChromeProfile"
 	cmd := exec.Command(chrome,
 		"--remote-debugging-port=9222",
 		"--remote-allow-origins=*",
@@ -272,4 +278,16 @@ func findChromeOnUnixLike() (string, error) {
 	}
 
 	return "", errors.New("chrome not found in standard system directories")
+}
+
+// isPortOpen 检查本地指定端口是否已经开启（监听）
+func isPortOpen(host string, port int) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 2*time.Second)
+	if err != nil {
+		return false
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+	return true
 }
