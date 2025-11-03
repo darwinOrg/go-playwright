@@ -60,6 +60,9 @@ func (p *ExtPage) ExpectExtPage(ctx *dgctx.DgContext, cb func() error) (*ExtPage
 	page, err := p.extBC.ExpectPage(cb)
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.ExpectExtPage error: %v", err)
+		if page != nil {
+			_ = page.Close()
+		}
 		return nil, err
 	}
 
