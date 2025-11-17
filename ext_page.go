@@ -69,6 +69,10 @@ func (p *ExtPage) ExpectExtPage(ctx *dgctx.DgContext, cb func() error) (*ExtPage
 	return p.extBC.buildExtPage(page), nil
 }
 
+func (p *ExtPage) ExtContext() *ExtBrowserContext {
+	return p.extBC
+}
+
 func (p *ExtPage) Release() {
 	p.extBC.pw.Lock()
 	defer p.extBC.pw.Unlock()

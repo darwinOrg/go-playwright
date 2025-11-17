@@ -6,7 +6,8 @@ import (
 )
 
 func TestStartChrome(t *testing.T) {
-	chromeCmd, _, _ := StartChrome()
+	debugPort := 9222
+	_, _, _ = StartChrome(debugPort)
 	time.Sleep(2 * time.Second)
-	ShutdownChrome(chromeCmd, "")
+	//ShutdownChrome(chromeCmd, fmt.Sprintf("http://localhost:%d", debugPort))
 }

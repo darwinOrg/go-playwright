@@ -35,7 +35,7 @@ func StartChrome(debugPort int) (*exec.Cmd, string, error) {
 	userDataDir := homeDir + "/ChromeProfile"
 
 	if debugPort == 0 {
-		debugPortEnv := os.Getenv("CHROME_DEBUG_PORT")
+		debugPortEnv := os.Getenv("DEBUG_PORT")
 		if debugPortEnv != "" {
 			debugPort, _ = strconv.Atoi(debugPortEnv)
 		}
