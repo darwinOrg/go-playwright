@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,14 +30,20 @@ type BrowserInfo struct {
 	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
 }
 
-func StartChrome(port int) (*exec.Cmd, string, error) {
+func StartChrome(debugPort int) (*exec.Cmd, string, error) {
 	homeDir, _ := os.UserHomeDir()
 	userDataDir := homeDir + "/ChromeProfile"
 
-	if port == 0 {
-		port = 9222
+	if debugPort == 0 {
+		debugPortEnv := os.Getenv("CHROME_DEBUG_PORT")
+		if debugPortEnv != "" {
+			debugPort, _ = strconv.Atoi(debugPortEnv)
+		}
+		if debugPort == 0 {
+			debugPort = 9222
+		}
 	}
-	if isPortOpen("localhost", port) {
+	if isPortOpen("localhost", debugPort) {
 		return nil, userDataDir, nil
 	}
 
@@ -46,7 +53,7 @@ func StartChrome(port int) (*exec.Cmd, string, error) {
 	}
 
 	cmd := exec.Command(chrome,
-		fmt.Sprintf("--remote-debugging-port=%d", port),
+		fmt.Sprintf("--remote-debugging-port=%d", debugPort),
 		"--remote-allow-origins=*",
 		"--remote-debugging-address=0.0.0.0", // 可选：允许外部访问
 		"--no-first-run",
