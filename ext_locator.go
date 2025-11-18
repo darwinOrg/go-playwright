@@ -143,6 +143,10 @@ func (l *ExtLocator) HasClass(ctx *dgctx.DgContext, class string) bool {
 	return cls == class
 }
 
+func (l *ExtLocator) GetSelectors() []string {
+	return l.selectors
+}
+
 func (l *ExtLocator) Suspend() {
 	l.extPage.suspended = true
 }
