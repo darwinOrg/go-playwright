@@ -24,6 +24,12 @@ func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
 }
 
 func (l *ExtLocator) Exists(ctx *dgctx.DgContext) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			dglogger.Errorf(ctx, "ExtLocator.Exists[%s] panic: %v", strings.Join(l.selectors, " "), err)
+		}
+	}()
+
 	count, err := l.Locator.Count()
 	if err != nil {
 		dglogger.Errorf(ctx, "locator[%s] count error: %v", strings.Join(l.selectors, " "), err)
