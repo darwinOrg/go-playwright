@@ -66,7 +66,7 @@ func (p *ExtPage) ExpectExtPage(ctx *dgctx.DgContext, cb func() error) (*ExtPage
 		return nil, err
 	}
 
-	return p.extBC.buildExtPage(page), nil
+	return p.extBC.BuildExtPage(page), nil
 }
 
 func (p *ExtPage) ExtContext() *ExtBrowserContext {

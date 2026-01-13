@@ -249,10 +249,10 @@ func (bc *ExtBrowserContext) NewExtPage(ctx *dgctx.DgContext) (*ExtPage, error) 
 		return nil, err
 	}
 
-	return bc.buildExtPage(page), nil
+	return bc.BuildExtPage(page), nil
 }
 
-func (bc *ExtBrowserContext) buildExtPage(page playwright.Page) *ExtPage {
+func (bc *ExtBrowserContext) BuildExtPage(page playwright.Page) *ExtPage {
 	extPage := &ExtPage{
 		Page:   page,
 		extBC:  bc,
