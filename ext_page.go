@@ -116,6 +116,10 @@ func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) erro
 	}()
 
 	p.CheckSuspend(ctx)
+
+	// 使用 CDP 注入脚本，确保在页面加载之前就执行
+	_ = p.extBC.InjectScriptViaCDP(p.Page)
+
 	err := p.Navigate(ctx, url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateLoad,
 	})
@@ -123,6 +127,10 @@ func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) erro
 		dglogger.Errorf(ctx, "Page.WaitUntilStateLoad error: %v | url: %s", err, url)
 		return err
 	}
+
+	// 导航后再次注入指纹脚本
+	_, _ = p.Evaluate(InitScript)
+
 	return nil
 }
 
@@ -134,12 +142,20 @@ func (p *ExtPage) Navigate(ctx *dgctx.DgContext, url string, options ...playwrig
 	}()
 
 	p.CheckSuspend(ctx)
+
+	// 使用 CDP 注入脚本，确保在页面加载之前就执行
+	_ = p.extBC.InjectScriptViaCDP(p.Page)
+
 	_, err := p.Goto(url, options...)
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.Goto url[%s] error: %v", url, err)
 		p.ReNewPageByError(err)
 		return err
 	}
+
+	// 导航后再次注入指纹脚本
+	_, _ = p.Evaluate(InitScript)
+
 	return nil
 }
 

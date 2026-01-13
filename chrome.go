@@ -53,22 +53,61 @@ func StartChrome(debugPort int) (*exec.Cmd, string, error) {
 	}
 
 	cmd := exec.Command(chrome,
-		fmt.Sprintf("--remote-debugging-port=%d", debugPort),
+		fmt.Sprintf(
+			"--remote-debugging-port=%d", debugPort),
 		"--remote-allow-origins=*",
-		"--remote-debugging-address=0.0.0.0", // 可选：允许外部访问
 		"--no-first-run",
-		"--no-default-browser-check",
-		"--disable-gpu",
+		"--disable-blink-features=AutomationControlled",
+		"--disable-features=IsolateOrigins,site-per-process",
+		"--disable-site-isolation-trials",
+		"--disable-web-security",
+		"--disable-features=VizDisplayCompositor",
+		"--start-maximized",
+		"--disable-infobars",
+		"--disable-notifications",
+		"--disable-popup-blocking",
+		"--disable-save-password-bubble",
+		"--disable-translate",
+		"--disable-background-networking",
+		"--disable-background-timer-throttling",
+		"--disable-backgrounding-occluded-windows",
+		"--disable-breakpad",
+		"--disable-client-side-phishing-detection",
+		"--disable-component-extensions-with-background-pages",
+		"--disable-default-apps",
+		"--disable-domain-reliability",
 		"--disable-extensions",
-		"--disable-plugins",
+		"--disable-features=TranslateUI,BlinkGenPropertyTrees",
+		"--disable-hang-monitor",
+		"--disable-ipc-flooding-protection",
+		"--disable-popup-blocking",
+		"--disable-prompt-on-repost",
+		"--disable-renderer-backgrounding",
 		"--disable-sync",
+		"--disable-color-correct-rendering",
+		"--metrics-recording-only",
+		"--no-first-run",
+		"--enable-automation=false",
+		"--password-store=basic",
+		"--use-mock-keychain",
+		"--force-fieldtrials=*BackgroundTracing/default/",
+		"--disable-field-trial-config",
 		"--user-data-dir="+userDataDir,
-		// 静默日志输出的关键参数
-		"--log-level=3",                     // 只显示致命错误
-		"--silent-startup",                  // 静默启动
-		"--disable-dev-shm-usage",           // 减少崩溃
-		"--disable-logging",                 // 禁用日志记录
-		"--disable-ipc-flooding-protection", // 减少日志
+		"--disable-dev-shm-usage",
+		"--hide-scrollbars",
+		"--mute-audio",
+		"--no-sandbox",
+		"--disable-setuid-sandbox",
+		"--disable-webrtc",
+		"--disable-webrtc-multiple-routes",
+		"--disable-webrtc-hw-decoding",
+		"--disable-webrtc-hw-encoding",
+		"--disable-webrtc-codec-h264",
+		"--disable-webrtc-codec-vp8",
+		"--disable-webrtc-codec-vp9",
+		"--disable-webrtc-codec-av1",
+		"--disable-webrtc-codec-i420",
+		"--disable-webrtc-codec-svc",
 	)
 
 	// 将 stdout 和 stderr 重定向到空设备

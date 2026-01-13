@@ -174,7 +174,11 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 			browserContext = browserContexts[0]
 		} else {
 			var err error
-			browserContext, err = browser.NewContext()
+			browserContext, err = browser.NewContext(playwright.BrowserNewContextOptions{
+				UserAgent:  playwright.String("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+				Locale:     playwright.String("zh-CN"),
+				TimezoneId: playwright.String("Asia/Shanghai"),
+			})
 			if err != nil {
 				dglogger.Errorf(ctx, "could not create browser context: %v", err)
 				return nil, err
@@ -187,6 +191,9 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 		return nil, fmt.Errorf("browser context is nil")
 	}
 
+	// 为上下文注入指纹脚本
+	_ = browserContext.AddInitScript(playwright.Script{Content: &InitScript})
+
 	extBC := &ExtBrowserContext{
 		pw:             pw,
 		browserType:    browserType,
@@ -194,7 +201,16 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 		BrowserContext: browserContext,
 	}
 
-	extBC.extPages = dgcoll.MapToList(browserContext.Pages(), func(page playwright.Page) *ExtPage {
+	// 为已存在的页面注入指纹脚本
+	pages := browserContext.Pages()
+	for _, page := range pages {
+		// 使用 CDP 注入脚本
+		_ = extBC.InjectScriptViaCDP(page)
+		// 同时也使用常规方法注入
+		_ = page.AddInitScript(playwright.Script{Content: &InitScript})
+	}
+
+	extBC.extPages = dgcoll.MapToList(pages, func(page playwright.Page) *ExtPage {
 		return &ExtPage{
 			Page:   page,
 			extBC:  extBC,
@@ -249,10 +265,22 @@ func (bc *ExtBrowserContext) NewExtPage(ctx *dgctx.DgContext) (*ExtPage, error) 
 		return nil, err
 	}
 
+	// 使用 CDP 注入指纹脚本，确保在页面加载之前就执行
+	_ = bc.InjectScriptViaCDP(page)
+
+	// 同时也使用常规方法注入
+	_ = page.AddInitScript(playwright.Script{Content: &InitScript})
+
 	return bc.BuildExtPage(page), nil
 }
 
 func (bc *ExtBrowserContext) BuildExtPage(page playwright.Page) *ExtPage {
+	// 使用 CDP 注入指纹脚本，确保在页面加载之前就执行
+	_ = bc.InjectScriptViaCDP(page)
+
+	// 同时也使用常规方法注入
+	_ = page.AddInitScript(playwright.Script{Content: &InitScript})
+
 	extPage := &ExtPage{
 		Page:   page,
 		extBC:  bc,
@@ -261,4 +289,24 @@ func (bc *ExtBrowserContext) BuildExtPage(page playwright.Page) *ExtPage {
 	bc.extPages = append(bc.extPages, extPage)
 
 	return extPage
+}
+
+// InjectScriptViaCDP 使用 CDP 注入脚本到页面
+func (bc *ExtBrowserContext) InjectScriptViaCDP(page playwright.Page) error {
+	// 尝试使用 CDP 注入脚本
+	cdpSession, err := page.Context().NewCDPSession(page)
+	if err != nil {
+		// CDP 不可用，静默失败
+		return err
+	}
+
+	_, err = cdpSession.Send("Page.addScriptToEvaluateOnNewDocument", map[string]interface{}{
+		"source": InitScript,
+	})
+	if err != nil {
+		// CDP 注入失败，静默失败
+		return err
+	}
+
+	return nil
 }
