@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/darwinOrg/go-common/utils"
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 	"github.com/gorilla/websocket"
@@ -30,10 +32,7 @@ type BrowserInfo struct {
 	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
 }
 
-func StartChrome(debugPort int) (*exec.Cmd, string, error) {
-	homeDir, _ := os.UserHomeDir()
-	userDataDir := homeDir + "/ChromeProfile"
-
+func StartChrome(debugPort int, userDataDir string) (*exec.Cmd, string, error) {
 	if debugPort == 0 {
 		debugPortEnv := os.Getenv("DEBUG_PORT")
 		if debugPortEnv != "" {
@@ -339,4 +338,14 @@ func isPortOpen(host string, port int) bool {
 		_ = conn.Close()
 	}()
 	return true
+}
+
+func GetDefaultUserDataDir() string {
+	homeDir, _ := os.UserHomeDir()
+	return homeDir + "/ChromeProfile"
+}
+
+func GetTempUserDataDir() string {
+	tempDir := os.TempDir()
+	return path.Join(tempDir, "ChromeProfile", utils.MustRandomLetter(8))
 }

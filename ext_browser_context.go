@@ -12,10 +12,11 @@ import (
 
 type ExtBrowserContext struct {
 	playwright.BrowserContext
-	pw          *playwright.Playwright
-	browserType playwright.BrowserType
-	browser     playwright.Browser
-	extPages    []*ExtPage
+	pw               *playwright.Playwright
+	browserType      playwright.BrowserType
+	browser          playwright.Browser
+	extPages         []*ExtPage
+	cheatInitialized bool // 防爬虫信息是否已初始化
 }
 
 func NewDebugExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (*ExtBrowserContext, error) {
@@ -46,9 +47,20 @@ func NewDebugExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOpti
 
 	browserContext, err := pw.Chromium.LaunchPersistentContext(extPwOpt.UserDataDir,
 		playwright.BrowserTypeLaunchPersistentContextOptions{
-			Args:           []string{fmt.Sprintf("--remote-debugging-port=%d", remoteDebuggingPort)},
-			ExecutablePath: playwright.String(extPwOpt.mustGetBrowserPath()),
-			Headless:       playwright.Bool(extPwOpt.Headless),
+			Args: []string{
+				fmt.Sprintf("--remote-debugging-port=%d", remoteDebuggingPort),
+				"--disable-blink-features=AutomationControlled",
+				"--disable-features=IsolateOrigins,site-per-process",
+				"--no-sandbox",
+				"--disable-setuid-sandbox",
+				"--disable-dev-shm-usage",
+				"--disable-accelerated-2d-canvas",
+				"--disable-gpu",
+				"--window-size=1920,1080",
+			},
+			ExecutablePath:    playwright.String(extPwOpt.mustGetBrowserPath()),
+			Headless:          playwright.Bool(extPwOpt.Headless),
+			IgnoreDefaultArgs: []string{"--enable-automation", "--enable-blink-features=IdleDetection"},
 		})
 	if err != nil {
 		dglogger.Errorf(ctx, "could not create browser context: %v", err)
@@ -123,6 +135,17 @@ func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (
 				ExecutablePath: executablePath,
 				Channel:        channel,
 				Headless:       playwright.Bool(extPwOpt.Headless),
+				Args: []string{
+					"--disable-blink-features=AutomationControlled",
+					"--disable-features=IsolateOrigins,site-per-process",
+					"--no-sandbox",
+					"--disable-setuid-sandbox",
+					"--disable-dev-shm-usage",
+					"--disable-accelerated-2d-canvas",
+					"--disable-gpu",
+					"--window-size=1920,1080",
+				},
+				IgnoreDefaultArgs: []string{"--enable-automation", "--enable-blink-features=IdleDetection"},
 			})
 		if err != nil {
 			dglogger.Errorf(ctx, "could not create browser context: %v", err)
@@ -133,6 +156,17 @@ func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (
 			ExecutablePath: executablePath,
 			Channel:        channel,
 			Headless:       playwright.Bool(extPwOpt.Headless),
+			Args: []string{
+				"--disable-blink-features=AutomationControlled",
+				"--disable-features=IsolateOrigins,site-per-process",
+				"--no-sandbox",
+				"--disable-setuid-sandbox",
+				"--disable-dev-shm-usage",
+				"--disable-accelerated-2d-canvas",
+				"--disable-gpu",
+				"--window-size=1920,1080",
+			},
+			IgnoreDefaultArgs: []string{"--enable-automation", "--enable-blink-features=IdleDetection"},
 		})
 		if err != nil {
 			dglogger.Errorf(ctx, "could not launch browser: %v", err)
@@ -191,8 +225,12 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 		return nil, fmt.Errorf("browser context is nil")
 	}
 
-	// 为上下文注入指纹脚本
-	_ = browserContext.AddInitScript(playwright.Script{Content: &InitScript})
+	// 获取当前操作系统类型并生成对应的脚本
+	osType := GetCurrentOS()
+	initScript := GetInitScript(osType)
+
+	// 为上下文注入指纹脚本（这样所有新页面都会自动应用）
+	_ = browserContext.AddInitScript(playwright.Script{Content: &initScript})
 
 	extBC := &ExtBrowserContext{
 		pw:             pw,
@@ -201,13 +239,11 @@ func buildExtBrowserContext(ctx *dgctx.DgContext, pw *playwright.Playwright, bro
 		BrowserContext: browserContext,
 	}
 
-	// 为已存在的页面注入指纹脚本
+	// 为已存在的页面初始化防爬虫信息（只初始化一次）
 	pages := browserContext.Pages()
-	for _, page := range pages {
-		// 使用 CDP 注入脚本
-		_ = extBC.InjectScriptViaCDP(page)
-		// 同时也使用常规方法注入
-		_ = page.AddInitScript(playwright.Script{Content: &InitScript})
+	if len(pages) > 0 {
+		// 只在第一个页面上初始化 CDP 配置
+		_ = extBC.InitCheatInfoOnPage(pages[0])
 	}
 
 	extBC.extPages = dgcoll.MapToList(pages, func(page playwright.Page) *ExtPage {
@@ -265,22 +301,12 @@ func (bc *ExtBrowserContext) NewExtPage(ctx *dgctx.DgContext) (*ExtPage, error) 
 		return nil, err
 	}
 
-	// 使用 CDP 注入指纹脚本，确保在页面加载之前就执行
-	_ = bc.InjectScriptViaCDP(page)
-
-	// 同时也使用常规方法注入
-	_ = page.AddInitScript(playwright.Script{Content: &InitScript})
-
+	// 脚本已经通过 BrowserContext.AddInitScript 注入，不需要在这里重复初始化
 	return bc.BuildExtPage(page), nil
 }
 
 func (bc *ExtBrowserContext) BuildExtPage(page playwright.Page) *ExtPage {
-	// 使用 CDP 注入指纹脚本，确保在页面加载之前就执行
-	_ = bc.InjectScriptViaCDP(page)
-
-	// 同时也使用常规方法注入
-	_ = page.AddInitScript(playwright.Script{Content: &InitScript})
-
+	// 脚本已经通过 BrowserContext.AddInitScript 注入，不需要在这里重复初始化
 	extPage := &ExtPage{
 		Page:   page,
 		extBC:  bc,
@@ -293,6 +319,11 @@ func (bc *ExtBrowserContext) BuildExtPage(page playwright.Page) *ExtPage {
 
 // InjectScriptViaCDP 使用 CDP 注入脚本到页面
 func (bc *ExtBrowserContext) InjectScriptViaCDP(page playwright.Page) error {
+	return bc.InjectScriptViaCDPWithOS(page)
+}
+
+// InjectScriptViaCDPWithOS 使用 CDP 注入脚本到页面（根据操作系统类型生成脚本）
+func (bc *ExtBrowserContext) InjectScriptViaCDPWithOS(page playwright.Page) error {
 	// 尝试使用 CDP 注入脚本
 	cdpSession, err := page.Context().NewCDPSession(page)
 	if err != nil {
@@ -300,8 +331,12 @@ func (bc *ExtBrowserContext) InjectScriptViaCDP(page playwright.Page) error {
 		return err
 	}
 
+	// 获取当前操作系统类型并生成对应的脚本
+	osType := GetCurrentOS()
+	initScript := GetInitScript(osType)
+
 	_, err = cdpSession.Send("Page.addScriptToEvaluateOnNewDocument", map[string]interface{}{
-		"source": InitScript,
+		"source": initScript,
 	})
 	if err != nil {
 		// CDP 注入失败，静默失败
@@ -309,4 +344,149 @@ func (bc *ExtBrowserContext) InjectScriptViaCDP(page playwright.Page) error {
 	}
 
 	return nil
+}
+
+// InitCheatInfoOnPage 在页面上初始化所有防爬虫信息（只在页面创建时调用一次）
+func (bc *ExtBrowserContext) InitCheatInfoOnPage(page playwright.Page) error {
+	// 只在第一次初始化时设置平台和屏幕信息
+	if !bc.cheatInitialized {
+		// 初始化所有防爬虫信息
+		if err := bc.initCheatInfo(page); err != nil {
+			// CDP 不可用，静默失败
+			return err
+		}
+		bc.cheatInitialized = true
+	}
+
+	// 注入脚本（使用动态生成的脚本）
+	return bc.InjectScriptViaCDPWithOS(page)
+}
+
+// initCheatInfo 初始化所有防爬虫信息
+func (bc *ExtBrowserContext) initCheatInfo(page playwright.Page) error {
+	if err := bc.initCheatPlatform(page); err != nil {
+		return err
+	}
+	if err := bc.initCheatScreenInfo(page); err != nil {
+		return err
+	}
+	if err := bc.initCheatWebGLCanvasInfo(page); err != nil {
+		return err
+	}
+	return nil
+}
+
+// initCheatPlatform 设置 User Agent 和平台信息
+func (bc *ExtBrowserContext) initCheatPlatform(page playwright.Page) error {
+	cdpSession, err := page.Context().NewCDPSession(page)
+	if err != nil {
+		return err
+	}
+
+	// 获取当前操作系统类型
+	osType := GetCurrentOS()
+	config := GetPlatformConfig(osType)
+
+	// 转换 brands 格式
+	var brands []map[string]string
+	for _, brand := range config.UserAgentMetadata.Brands {
+		brands = append(brands, map[string]string{
+			"brand":   brand.Brand,
+			"version": brand.Version,
+		})
+	}
+
+	// 设置 User Agent Override
+	_, err = cdpSession.Send("Network.setUserAgentOverride", map[string]interface{}{
+		"userAgent":      config.UserAgent,
+		"platform":       config.Platform,
+		"acceptLanguage": config.AcceptLanguage,
+		"userAgentMetadata": map[string]interface{}{
+			"brands":          brands,
+			"fullVersion":     config.UserAgentMetadata.FullVersion,
+			"platform":        config.UserAgentMetadata.Platform,
+			"platformVersion": config.UserAgentMetadata.PlatformVersion,
+			"architecture":    config.UserAgentMetadata.Architecture,
+			"model":           config.UserAgentMetadata.Model,
+			"mobile":          config.UserAgentMetadata.Mobile,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// 构建完整的 Client Hints
+	secChUa := ""
+	for i, brand := range config.UserAgentMetadata.Brands {
+		if i > 0 {
+			secChUa += ", "
+		}
+		secChUa += fmt.Sprintf("\"%s\";v=\"%s\"", brand.Brand, brand.Version)
+	}
+
+	// 设置额外的 HTTP Headers
+	_, err = cdpSession.Send("Network.setExtraHTTPHeaders", map[string]interface{}{
+		"headers": map[string]string{
+			"sec-ch-ua":                 secChUa,
+			"sec-ch-ua-mobile":          "?0",
+			"sec-ch-ua-platform":        config.SecChUaPlatform,
+			"sec-ch-ua-arch":            fmt.Sprintf("\"%s\"", config.UserAgentMetadata.Architecture),
+			"sec-ch-ua-full-version":    fmt.Sprintf("\"%s\"", config.UserAgentMetadata.FullVersion),
+			"sec-ch-ua-bitness":         "\"64\"",
+			"sec-ch-ua-model":           "\"\"",
+			"sec-fetch-dest":            "document",
+			"sec-fetch-mode":            "navigate",
+			"sec-fetch-site":            "none",
+			"sec-fetch-user":            "?1",
+			"upgrade-insecure-requests": "1",
+		},
+	})
+	return err
+}
+
+// initCheatScreenInfo 设置屏幕信息
+func (bc *ExtBrowserContext) initCheatScreenInfo(page playwright.Page) error {
+	cdpSession, err := page.Context().NewCDPSession(page)
+	if err != nil {
+		return err
+	}
+
+	// 获取当前操作系统类型
+	osType := GetCurrentOS()
+	config := GetScreenConfig(osType)
+
+	// 设置设备指标
+	_, err = cdpSession.Send("Emulation.setDeviceMetricsOverride", map[string]interface{}{
+		"width":             config.Width,
+		"height":            config.Height,
+		"deviceScaleFactor": config.DeviceScaleFactor,
+		"mobile":            config.Mobile,
+		"screenWidth":       config.ScreenWidth,
+		"screenHeight":      config.ScreenHeight,
+		"positionX":         config.PositionX,
+		"positionY":         config.PositionY,
+		"viewport": map[string]interface{}{
+			"x":      config.ViewportX,
+			"y":      config.ViewportY,
+			"width":  config.ViewportWidth,
+			"height": config.ViewportHeight,
+			"scale":  config.DeviceScaleFactor,
+		},
+	})
+	return err
+}
+
+// initCheatWebGLCanvasInfo 设置 WebGL Canvas 信息
+func (bc *ExtBrowserContext) initCheatWebGLCanvasInfo(page playwright.Page) error {
+	cdpSession, err := page.Context().NewCDPSession(page)
+	if err != nil {
+		return err
+	}
+
+	// 通过 Runtime.evaluate 注入 WebGL 伪装脚本
+	_, err = cdpSession.Send("Runtime.evaluate", map[string]interface{}{
+		"expression":   InitScript,
+		"awaitPromise": false,
+	})
+	return err
 }

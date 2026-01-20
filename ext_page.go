@@ -129,7 +129,7 @@ func (p *ExtPage) NavigateWithLoadedState(ctx *dgctx.DgContext, url string) erro
 	}
 
 	// 导航后再次注入指纹脚本
-	_, _ = p.Evaluate(InitScript)
+	//_, _ = p.Evaluate(InitScript)
 
 	return nil
 }

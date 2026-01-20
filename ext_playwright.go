@@ -3,6 +3,7 @@ package extpw
 import (
 	"fmt"
 	"net"
+	"runtime"
 
 	dgctx "github.com/darwinOrg/go-common/context"
 	dglogger "github.com/darwinOrg/go-logger"
@@ -97,4 +98,33 @@ func getFreePort(ctx *dgctx.DgContext) (int, error) {
 	}()
 
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+// OSType 操作系统类型
+type OSType string
+
+const (
+	OSWindows OSType = "windows"
+	OSMacOS   OSType = "macos"
+	OSLinux   OSType = "linux"
+)
+
+// GetCurrentOS 获取当前操作系统类型
+func GetCurrentOS() OSType {
+	return OSType(runtime.GOOS)
+}
+
+// IsWindows 判断是否为 Windows
+func IsWindows() bool {
+	return runtime.GOOS == "windows"
+}
+
+// IsMacOS 判断是否为 macOS
+func IsMacOS() bool {
+	return runtime.GOOS == "darwin"
+}
+
+// IsLinux 判断是否为 Linux
+func IsLinux() bool {
+	return runtime.GOOS == "linux"
 }
