@@ -15,6 +15,14 @@ type ExtLocator struct {
 	selectors []string
 }
 
+func NewExtLocator(extPage *ExtPage, locator playwright.Locator, selector string) *ExtLocator {
+	return &ExtLocator{
+		extPage:   extPage,
+		Locator:   locator,
+		selectors: []string{selector},
+	}
+}
+
 func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
 	return &ExtLocator{
 		extPage:   l.extPage,

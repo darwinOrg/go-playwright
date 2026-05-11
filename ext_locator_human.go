@@ -41,34 +41,33 @@ func WithMouseSpeed(speed float64) HumanLikeMouseOption {
 // HumanLikeMoveToSelector moves the mouse to the element specified by selector
 // with a natural human-like trajectory (Bezier curve + easing + micro-jitter).
 // It does NOT click — use HumanLikeClick if a click is also needed.
-func (p *ExtPage) HumanLikeMoveToSelector(ctx *dgctx.DgContext, selector string, options ...HumanLikeMouseOption) error {
+func (l *ExtLocator) HumanLikeMoveToSelector(ctx *dgctx.DgContext, options ...HumanLikeMouseOption) error {
 	defer func() {
 		if err := recover(); err != nil {
-			dglogger.Errorf(ctx, "HumanLikeMoveToSelector[%s] panic: %v", selector, err)
+			dglogger.Errorf(ctx, "HumanLikeMoveToSelector[%v] panic: %v", l.selectors, err)
 		}
 	}()
 
-	p.CheckSuspend(ctx)
+	l.CheckSuspend(ctx)
 
 	opts := defaultHumanLikeMouseOptions()
 	for _, o := range options {
 		o(opts)
 	}
 
-	locator := p.ExtLocator(selector)
-	if !locator.Exists(ctx) {
-		err := fmt.Errorf("selector[%s] not found", selector)
+	if !l.Exists(ctx) {
+		err := fmt.Errorf("selector[%v] not found", l.selectors)
 		dglogger.Errorf(ctx, "HumanLikeMoveToSelector: %v", err)
 		return err
 	}
 
-	bbox, err := locator.BoundingBox()
+	bbox, err := l.BoundingBox()
 	if err != nil {
 		dglogger.Errorf(ctx, "HumanLikeMoveToSelector: get bounding box error: %v", err)
 		return err
 	}
 	if bbox == nil {
-		err := fmt.Errorf("bounding box is nil for selector[%s]", selector)
+		err := fmt.Errorf("bounding box is nil for selector[%v]", l.selectors)
 		dglogger.Errorf(ctx, "HumanLikeMoveToSelector: %v", err)
 		return err
 	}
@@ -78,10 +77,10 @@ func (p *ExtPage) HumanLikeMoveToSelector(ctx *dgctx.DgContext, selector string,
 	targetY := bbox.Y + bbox.Height*0.2 + bbox.Height*0.6*rand.Float64()
 
 	// Determine starting position
-	startX, startY, err := p.getMouseStartPosition()
+	startX, startY, err := l.getMouseStartPosition()
 	if err != nil {
 		// Fallback: viewport bottom-right with randomness
-		viewportSize := p.ViewportSize()
+		viewportSize := l.extPage.ViewportSize()
 		if viewportSize != nil {
 			startX = float64(viewportSize.Width) * 0.85
 			startY = float64(viewportSize.Height) * 0.9
@@ -95,37 +94,37 @@ func (p *ExtPage) HumanLikeMoveToSelector(ctx *dgctx.DgContext, selector string,
 	startX += float64(rand.Intn(80) - 40)
 	startY += float64(rand.Intn(50) - 25)
 
-	return p.animateHumanLikeMouse(startX, startY, targetX, targetY, opts.speed)
+	return l.animateHumanLikeMouse(startX, startY, targetX, targetY, opts.speed)
 }
 
 // HumanLikeClick moves the mouse naturally to the element first, then clicks.
 // This is a drop-in replacement for a "stealth" click that bypasses bot detection.
-func (p *ExtPage) HumanLikeClick(ctx *dgctx.DgContext, selector string, options ...HumanLikeMouseOption) error {
+func (l *ExtLocator) HumanLikeClick(ctx *dgctx.DgContext, options ...HumanLikeMouseOption) error {
 	defer func() {
 		if err := recover(); err != nil {
-			dglogger.Errorf(ctx, "HumanLikeClick[%s] panic: %v", selector, err)
+			dglogger.Errorf(ctx, "HumanLikeClick[%v] panic: %v", l.selectors, err)
 		}
 	}()
 
-	p.CheckSuspend(ctx)
+	l.CheckSuspend(ctx)
 
-	if err := p.HumanLikeMoveToSelector(ctx, selector, options...); err != nil {
+	if err := l.HumanLikeMoveToSelector(ctx, options...); err != nil {
 		return err
 	}
 
 	// Tiny hesitation before pressing (humans naturally pause before clicking)
 	time.Sleep(time.Duration(rand.Intn(120)+40) * time.Millisecond)
 
-	bbox, err := p.ExtLocator(selector).BoundingBox()
+	bbox, err := l.BoundingBox()
 	if err != nil || bbox == nil {
 		dglogger.Errorf(ctx, "HumanLikeClick: re-get bounding box failed, fallback to regular click: %v", err)
-		return p.Click(ctx, selector)
+		return l.Click()
 	}
 
 	clickX := bbox.X + bbox.Width*0.2 + bbox.Width*0.6*rand.Float64()
 	clickY := bbox.Y + bbox.Height*0.2 + bbox.Height*0.6*rand.Float64()
 
-	if err := p.Mouse().Click(clickX, clickY); err != nil {
+	if err := l.extPage.Mouse().Click(clickX, clickY); err != nil {
 		dglogger.Errorf(ctx, "HumanLikeClick: mouse click error: %v", err)
 		return err
 	}
@@ -137,8 +136,8 @@ func (p *ExtPage) HumanLikeClick(ctx *dgctx.DgContext, selector string, options 
 
 // getMouseStartPosition reads the last-known mouse position stored in the page,
 // or falls back to a reasonable default (viewport bottom-right).
-func (p *ExtPage) getMouseStartPosition() (float64, float64, error) {
-	result, err := p.Evaluate(`() => {
+func (l *ExtLocator) getMouseStartPosition() (float64, float64, error) {
+	result, err := l.extPage.Evaluate(`() => {
 		const x = window._qwenLastMouseX;
 		const y = window._qwenLastMouseY;
 		if (x != null && y != null) return { x, y };
@@ -160,7 +159,7 @@ func (p *ExtPage) getMouseStartPosition() (float64, float64, error) {
 
 // animateHumanLikeMouse moves the mouse from (startX,startY) to (targetX,targetY)
 // along a Bezier curve path with varying speed and micro-jitter.
-func (p *ExtPage) animateHumanLikeMouse(startX, startY, targetX, targetY, speed float64) error {
+func (l *ExtLocator) animateHumanLikeMouse(startX, startY, targetX, targetY, speed float64) error {
 	dist := math.Sqrt((targetX-startX)*(targetX-startX) + (targetY-startY)*(targetY-startY))
 
 	// More steps = slower & smoother; less steps = faster & jerkier
@@ -179,7 +178,7 @@ func (p *ExtPage) animateHumanLikeMouse(startX, startY, targetX, targetY, speed 
 
 	lastX, lastY := startX, startY
 	for i, pt := range path {
-		if err := p.Mouse().Move(pt[0], pt[1]); err != nil {
+		if err := l.extPage.Mouse().Move(pt[0], pt[1]); err != nil {
 			return err
 		}
 		lastX, lastY = pt[0], pt[1]
@@ -200,7 +199,7 @@ func (p *ExtPage) animateHumanLikeMouse(startX, startY, targetX, targetY, speed 
 	}
 
 	// Store last position in the page for the next movement
-	_, _ = p.Evaluate(fmt.Sprintf(
+	_, _ = l.extPage.Evaluate(fmt.Sprintf(
 		`() => { window._qwenLastMouseX = %f; window._qwenLastMouseY = %f; }`,
 		lastX, lastY,
 	))
