@@ -54,21 +54,7 @@ func StartChrome(debugPort int) (*exec.Cmd, string, error) {
 
 	cmd := exec.Command(chrome,
 		fmt.Sprintf("--remote-debugging-port=%d", debugPort),
-		"--remote-allow-origins=*",
-		"--remote-debugging-address=0.0.0.0", // 可选：允许外部访问
-		"--no-first-run",
-		"--no-default-browser-check",
-		"--disable-gpu",
-		"--disable-extensions",
-		"--disable-plugins",
-		"--disable-sync",
 		"--user-data-dir="+userDataDir,
-		// 静默日志输出的关键参数
-		"--log-level=3",                     // 只显示致命错误
-		"--silent-startup",                  // 静默启动
-		"--disable-dev-shm-usage",           // 减少崩溃
-		"--disable-logging",                 // 禁用日志记录
-		"--disable-ipc-flooding-protection", // 减少日志
 	)
 
 	// 将 stdout 和 stderr 重定向到空设备
