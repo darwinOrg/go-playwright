@@ -15,11 +15,11 @@ type ExtLocator struct {
 	selectors []string
 }
 
-func NewExtLocator(extPage *ExtPage, locator playwright.Locator, selector string) *ExtLocator {
+func NewExtLocator(extPage *ExtPage, locator playwright.Locator, selectors []string) *ExtLocator {
 	return &ExtLocator{
 		extPage:   extPage,
 		Locator:   locator,
-		selectors: []string{selector},
+		selectors: selectors,
 	}
 }
 
