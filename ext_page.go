@@ -342,3 +342,8 @@ func (p *ExtPage) CheckSuspend(ctx *dgctx.DgContext) {
 		p.RandomWaitMiddle(ctx)
 	}
 }
+
+// SetDesktopViewport sets a realistic desktop viewport (1920x1080).
+func (p *ExtPage) SetDesktopViewport() error {
+	return p.SetViewportSize(1920, 1080)
+}

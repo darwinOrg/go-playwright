@@ -104,7 +104,7 @@ func closeChromeViaCDP(baseURL string) error {
 
 	conn, _, err := websocket.DefaultDialer.DialContext(ctx, cdpWebSocketURL, nil)
 	if err != nil {
-		log.Printf(fmt.Sprintf("websocket.DefaultDialer.DialContext error: %v", err))
+		log.Printf("websocket.DefaultDialer.DialContext error: %v", err)
 		return err
 	}
 	defer func() {
@@ -118,7 +118,7 @@ func closeChromeViaCDP(baseURL string) error {
 	}`
 
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(closeCmd)); err != nil {
-		log.Printf(fmt.Sprintf("conn.WriteMessage error: %v", err))
+		log.Printf("conn.WriteMessage error: %v", err)
 		return err
 	}
 
@@ -129,7 +129,7 @@ func closeChromeViaCDP(baseURL string) error {
 func getBrowserWebSocketURL(baseURL string) (string, error) {
 	resp, err := http.Get(baseURL + "/json/version")
 	if err != nil {
-		log.Printf(fmt.Sprintf(baseURL+"/json/version get error: %v", err))
+		log.Printf(baseURL+"/json/version get error: %v", err)
 		return "", err
 	}
 	defer func() {
@@ -138,7 +138,7 @@ func getBrowserWebSocketURL(baseURL string) (string, error) {
 
 	var info BrowserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		log.Printf(fmt.Sprintf("json.NewDecoder(resp.Body).Decode error: %v", err))
+		log.Printf("json.NewDecoder(resp.Body).Decode error: %v", err)
 		return "", err
 	}
 

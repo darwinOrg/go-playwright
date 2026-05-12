@@ -26,6 +26,9 @@ type ExtPlaywrightOption struct {
 	RemoteDebuggingHost string   `json:"remoteDebuggingHost" mapstructure:"remoteDebuggingHost"`
 	RemoteDebuggingPort int      `json:"remoteDebuggingPort" mapstructure:"remoteDebuggingPort"`
 	LaunchArgs          []string `json:"launchargs" mapstructure:"launchArgs"`
+	// IgnoreDefaultArgs are Chromium default args to suppress (e.g. "--enable-automation").
+	// These leak automation signals and should be removed for anti-detection.
+	IgnoreDefaultArgs []string `json:"ignoreDefaultArgs" mapstructure:"ignoreDefaultArgs"`
 }
 
 func (opt *ExtPlaywrightOption) getBrowserType(pw *playwright.Playwright) playwright.BrowserType {
@@ -60,7 +63,7 @@ func (opt *ExtPlaywrightOption) mustGetBrowserPath() string {
 	}
 }
 
-// GetLaunchArgs returns the combined launch arguments: opt.Args + extra.
+// GetLaunchArgs returns the combined launch arguments: opt.LaunchArgs + extra.
 func (opt *ExtPlaywrightOption) GetLaunchArgs(extra ...string) []string {
 	n := len(opt.LaunchArgs) + len(extra)
 	if n == 0 {
