@@ -359,7 +359,6 @@ func cloakBinaryPath(versionDir string) string {
 func GetStealthArgs() []string {
 	seed := rand.Intn(90000) + 10000
 	base := []string{
-		"--no-sandbox",
 		fmt.Sprintf("--fingerprint=%d", seed),
 	}
 
