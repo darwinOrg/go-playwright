@@ -16,15 +16,16 @@ var MyBrowserType = struct {
 }{"chrome", "firefox", "webkit"}
 
 type ExtPlaywrightOption struct {
-	SkipInstallBrowsers bool   `json:"skipInstallBrowsers" mapstructure:"skipInstallBrowsers"`
-	Headless            bool   `json:"headless" mapstructure:"headless"`
-	BrowserType         string `json:"browserType" mapstructure:"browserType"`
-	Channel             string `json:"channel" mapstructure:"channel"`
-	DriverDirectory     string `json:"driverDirectory" mapstructure:"driverDirectory"`
-	BrowserPath         string `json:"browserPath" mapstructure:"browserPath"`
-	UserDataDir         string `json:"userDataDir" mapstructure:"userDataDir"`
-	RemoteDebuggingHost string `json:"remoteDebuggingHost" mapstructure:"remoteDebuggingHost"`
-	RemoteDebuggingPort int    `json:"remoteDebuggingPort" mapstructure:"remoteDebuggingPort"`
+	SkipInstallBrowsers bool     `json:"skipInstallBrowsers" mapstructure:"skipInstallBrowsers"`
+	Headless            bool     `json:"headless" mapstructure:"headless"`
+	BrowserType         string   `json:"browserType" mapstructure:"browserType"`
+	Channel             string   `json:"channel" mapstructure:"channel"`
+	DriverDirectory     string   `json:"driverDirectory" mapstructure:"driverDirectory"`
+	BrowserPath         string   `json:"browserPath" mapstructure:"browserPath"`
+	UserDataDir         string   `json:"userDataDir" mapstructure:"userDataDir"`
+	RemoteDebuggingHost string   `json:"remoteDebuggingHost" mapstructure:"remoteDebuggingHost"`
+	RemoteDebuggingPort int      `json:"remoteDebuggingPort" mapstructure:"remoteDebuggingPort"`
+	LaunchArgs          []string `json:"launchargs" mapstructure:"launchArgs"`
 }
 
 func (opt *ExtPlaywrightOption) getBrowserType(pw *playwright.Playwright) playwright.BrowserType {
@@ -57,6 +58,18 @@ func (opt *ExtPlaywrightOption) mustGetBrowserPath() string {
 
 		return chromePath
 	}
+}
+
+// GetLaunchArgs returns the combined launch arguments: opt.Args + extra.
+func (opt *ExtPlaywrightOption) GetLaunchArgs(extra ...string) []string {
+	n := len(opt.LaunchArgs) + len(extra)
+	if n == 0 {
+		return nil
+	}
+	all := make([]string, 0, n)
+	all = append(all, opt.LaunchArgs...)
+	all = append(all, extra...)
+	return all
 }
 
 func newPlaywright(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (*playwright.Playwright, error) {

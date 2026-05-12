@@ -46,7 +46,7 @@ func NewDebugExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOpti
 
 	browserContext, err := pw.Chromium.LaunchPersistentContext(extPwOpt.UserDataDir,
 		playwright.BrowserTypeLaunchPersistentContextOptions{
-			Args:           []string{fmt.Sprintf("--remote-debugging-port=%d", remoteDebuggingPort)},
+			Args:           extPwOpt.GetLaunchArgs(fmt.Sprintf("--remote-debugging-port=%d", remoteDebuggingPort)),
 			ExecutablePath: playwright.String(extPwOpt.mustGetBrowserPath()),
 			Headless:       playwright.Bool(extPwOpt.Headless),
 		})
@@ -120,6 +120,7 @@ func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (
 	if extPwOpt.UserDataDir != "" {
 		browserContext, err = browserType.LaunchPersistentContext(extPwOpt.UserDataDir,
 			playwright.BrowserTypeLaunchPersistentContextOptions{
+				Args:           extPwOpt.GetLaunchArgs(),
 				ExecutablePath: executablePath,
 				Channel:        channel,
 				Headless:       playwright.Bool(extPwOpt.Headless),
@@ -130,6 +131,7 @@ func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (
 		}
 	} else {
 		browser, err = browserType.Launch(playwright.BrowserTypeLaunchOptions{
+			Args:           extPwOpt.GetLaunchArgs(),
 			ExecutablePath: executablePath,
 			Channel:        channel,
 			Headless:       playwright.Bool(extPwOpt.Headless),

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -286,4 +287,87 @@ func isPortOpen(host string, port int) bool {
 		_ = conn.Close()
 	}()
 	return true
+}
+
+// ---------------------------------------------------------------------------
+// CloakBrowser integration
+// ---------------------------------------------------------------------------
+
+// CloakBrowserCacheDir returns the CloakBrowser cache directory (~/.cloakbrowser).
+func CloakBrowserCacheDir() string {
+	if env := os.Getenv("CLOAKBROWSER_CACHE_DIR"); env != "" {
+		return env
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".cloakbrowser")
+}
+
+// FindCloakBrowserBinary locates the CloakBrowser stealth Chromium binary.
+// Resolution order:
+//  1. CLOAKBROWSER_BINARY_PATH env var
+//  2. ~/.cloakbrowser/chromium-{version}/Chromium.app/Contents/MacOS/Chromium (macOS)
+//  3. ~/.cloakbrowser/chromium-{version}/chrome (Linux)
+//  4. ~/.cloakbrowser/chromium-{version}/chrome.exe (Windows)
+func FindCloakBrowserBinary() (string, error) {
+	// 1. Env override
+	if envPath := os.Getenv("CLOAKBROWSER_BINARY_PATH"); envPath != "" {
+		if _, err := os.Stat(envPath); err == nil {
+			return envPath, nil
+		}
+		return "", fmt.Errorf("CLOAKBROWSER_BINARY_PATH set to %q but file not found", envPath)
+	}
+
+	// 2. Scan ~/.cloakbrowser/chromium-*/ for binary
+	cacheDir := CloakBrowserCacheDir()
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return "", fmt.Errorf("cloakbrowser cache dir %q not found: %w", cacheDir, err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "chromium-") {
+			continue
+		}
+		versionDir := filepath.Join(cacheDir, entry.Name())
+		binaryPath := cloakBinaryPath(versionDir)
+		if _, err := os.Stat(binaryPath); err == nil {
+			return binaryPath, nil
+		}
+	}
+
+	return "", errors.New("cloakbrowser stealth chromium not found; install: npx cloakbrowser install")
+}
+
+func cloakBinaryPath(versionDir string) string {
+	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join(versionDir, "Chromium.app", "Contents", "MacOS", "Chromium")
+	case "windows":
+		return filepath.Join(versionDir, "chrome.exe")
+	default:
+		return filepath.Join(versionDir, "chrome")
+	}
+}
+
+// GetStealthArgs returns Chromium stealth launch arguments for anti-detection.
+// These args activate fingerprint randomisation baked into CloakBrowser's
+// patched Chromium binary (or any Chromium that supports --fingerprint flags):
+//
+//	--fingerprint=<random seed>
+//	--fingerprint-platform=<macos|windows>
+//	--no-sandbox
+func GetStealthArgs() []string {
+	seed := rand.Intn(90000) + 10000
+	base := []string{
+		"--no-sandbox",
+		fmt.Sprintf("--fingerprint=%d", seed),
+	}
+
+	if runtime.GOOS == "darwin" {
+		return append(base, "--fingerprint-platform=macos")
+	} else if runtime.GOOS == "windows" {
+		return append(base, "--fingerprint-platform=windows")
+	}
+
+	return base
 }
