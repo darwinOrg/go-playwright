@@ -1,4 +1,4 @@
-package extpw_test
+package tests
 
 import (
 	"fmt"
