@@ -35,6 +35,7 @@ func TestBossScraper(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	defer extBC.Close()
 
 	extPage, err := extBC.NewExtPage(ctx)
 	if err != nil {
