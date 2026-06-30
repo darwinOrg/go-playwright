@@ -180,6 +180,24 @@ func (p *ExtPage) WaitForLoadStateLoad(ctx *dgctx.DgContext) error {
 	return nil
 }
 
+func (p *ExtPage) WaitForNetworkIdle(ctx *dgctx.DgContext) error {
+	defer func() {
+		if err := recover(); err != nil {
+			dglogger.Errorf(ctx, "WaitForNetworkIdle[%s] panic: %v", p.URL(), err)
+		}
+	}()
+
+	err := p.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateNetworkidle,
+	})
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.WaitForNetworkIdle error: %v", err)
+		p.ReNewPageByError(err)
+		return err
+	}
+	return nil
+}
+
 func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
 	defer func() {
 		if err := recover(); err != nil {
@@ -343,7 +361,6 @@ func (p *ExtPage) CheckSuspend(ctx *dgctx.DgContext) {
 	}
 }
 
-// SetDesktopViewport sets a realistic desktop viewport (1920x1080).
-func (p *ExtPage) SetDesktopViewport() error {
+func (p *ExtPage) SetDefaultDesktopViewport() error {
 	return p.SetViewportSize(1920, 1080)
 }
