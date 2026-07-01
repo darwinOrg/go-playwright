@@ -223,7 +223,7 @@ func (bc *ExtBrowserContext) GetOrNewExtPage(ctx *dgctx.DgContext) (*ExtPage, er
 	if len(bc.extPages) > 0 {
 		for _, extPage := range bc.extPages {
 			if extPage.IsClosed() {
-				extPage.Close()
+				_ = extPage.Close(ctx)
 				extPage.locked = false
 			} else {
 				openedPages = append(openedPages, extPage)

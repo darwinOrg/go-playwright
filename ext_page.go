@@ -85,18 +85,27 @@ func (p *ExtPage) Release() {
 	}
 }
 
-func (p *ExtPage) Close() {
-	_ = p.Page.Close()
+func (p *ExtPage) Close(ctx *dgctx.DgContext) error {
+	err := p.Page.Close()
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.Close error: %v | url: %s", err, p.URL())
+		return err
+	}
+	return nil
 }
 
-func (p *ExtPage) CloseAll() {
-	p.Close()
+func (p *ExtPage) CloseAll(ctx *dgctx.DgContext) error {
+	if err := p.Close(ctx); err != nil {
+		return err
+	}
+
 	p.extBC.Close()
+	return nil
 }
 
-func (p *ExtPage) ReNewPageByError(err error) {
+func (p *ExtPage) ReNewPageByError(ctx *dgctx.DgContext, err error) {
 	if strings.Contains(err.Error(), "target closed") {
-		p.Close()
+		_ = p.Close(ctx)
 		_ = utils.Retry(3, time.Second, func() error {
 			newPage, ne := p.extBC.NewPage()
 			if ne != nil {
@@ -137,7 +146,7 @@ func (p *ExtPage) Navigate(ctx *dgctx.DgContext, url string, options ...playwrig
 	_, err := p.Goto(url, options...)
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.Goto url[%s] error: %v", url, err)
-		p.ReNewPageByError(err)
+		p.ReNewPageByError(ctx, err)
 		return err
 	}
 	return nil
@@ -156,7 +165,7 @@ func (p *ExtPage) ReloadWithLoadedState(ctx *dgctx.DgContext) error {
 	})
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.Reload url[%s] error: %v", p.URL(), err)
-		p.ReNewPageByError(err)
+		p.ReNewPageByError(ctx, err)
 		return err
 	}
 	return nil
@@ -174,7 +183,7 @@ func (p *ExtPage) WaitForLoadStateLoad(ctx *dgctx.DgContext) error {
 	})
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
-		p.ReNewPageByError(err)
+		p.ReNewPageByError(ctx, err)
 		return err
 	}
 	return nil
@@ -192,7 +201,7 @@ func (p *ExtPage) WaitForNetworkIdle(ctx *dgctx.DgContext) error {
 	})
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.WaitForNetworkIdle error: %v", err)
-		p.ReNewPageByError(err)
+		p.ReNewPageByError(ctx, err)
 		return err
 	}
 	return nil
@@ -210,7 +219,7 @@ func (p *ExtPage) WaitForDomContentLoaded(ctx *dgctx.DgContext) error {
 	})
 	if err != nil {
 		dglogger.Errorf(ctx, "Page.WaitForLoadStateLoad error: %v", err)
-		p.ReNewPageByError(err)
+		p.ReNewPageByError(ctx, err)
 		return err
 	}
 	return err

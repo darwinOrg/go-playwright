@@ -58,6 +58,17 @@ func (l *ExtLocator) MustInnerText(ctx *dgctx.DgContext) string {
 	return strings.TrimSpace(text)
 }
 
+func (l *ExtLocator) MustInnerTexts(ctx *dgctx.DgContext) []string {
+	allLocators, err := l.ExtAll(ctx)
+	if err != nil {
+		return []string{}
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
+		return locator.MustInnerText(ctx)
+	})
+}
+
 func (l *ExtLocator) MustTextContent(ctx *dgctx.DgContext) string {
 	if !l.Exists(ctx) {
 		return ""
@@ -70,7 +81,18 @@ func (l *ExtLocator) MustTextContent(ctx *dgctx.DgContext) string {
 	return strings.TrimSpace(text)
 }
 
-func (l *ExtLocator) MustGetAttribute(ctx *dgctx.DgContext, attr string) string {
+func (l *ExtLocator) MustTextContents(ctx *dgctx.DgContext) []string {
+	allLocators, err := l.ExtAll(ctx)
+	if err != nil {
+		return []string{}
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
+		return locator.MustTextContent(ctx)
+	})
+}
+
+func (l *ExtLocator) MustAttribute(ctx *dgctx.DgContext, attr string) string {
 	if !l.Exists(ctx) {
 		return ""
 	}
@@ -80,6 +102,17 @@ func (l *ExtLocator) MustGetAttribute(ctx *dgctx.DgContext, attr string) string 
 		dglogger.Errorf(ctx, "locator[%s] get attribute error: %v", strings.Join(l.selectors, " "), err)
 	}
 	return strings.TrimSpace(text)
+}
+
+func (l *ExtLocator) MustAttributes(ctx *dgctx.DgContext, attr string) []string {
+	allLocators, err := l.ExtAll(ctx)
+	if err != nil {
+		return []string{}
+	}
+
+	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
+		return locator.MustAttribute(ctx, attr)
+	})
 }
 
 func (l *ExtLocator) ExtAll(ctx *dgctx.DgContext) ([]*ExtLocator, error) {
@@ -102,39 +135,6 @@ func (l *ExtLocator) ExtAll(ctx *dgctx.DgContext) ([]*ExtLocator, error) {
 	}), nil
 }
 
-func (l *ExtLocator) MustAllInnerTexts(ctx *dgctx.DgContext) []string {
-	allLocators, err := l.ExtAll(ctx)
-	if err != nil {
-		return []string{}
-	}
-
-	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
-		return locator.MustInnerText(ctx)
-	})
-}
-
-func (l *ExtLocator) MustAllTextContents(ctx *dgctx.DgContext) []string {
-	allLocators, err := l.ExtAll(ctx)
-	if err != nil {
-		return []string{}
-	}
-
-	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
-		return locator.MustTextContent(ctx)
-	})
-}
-
-func (l *ExtLocator) MustAllGetAttributes(ctx *dgctx.DgContext, attr string) []string {
-	allLocators, err := l.ExtAll(ctx)
-	if err != nil {
-		return []string{}
-	}
-
-	return dgcoll.MapToList(allLocators, func(locator *ExtLocator) string {
-		return locator.MustGetAttribute(ctx, attr)
-	})
-}
-
 func (l *ExtLocator) MustClick(ctx *dgctx.DgContext) {
 	l.CheckSuspend(ctx)
 	err := l.Click()
@@ -144,7 +144,7 @@ func (l *ExtLocator) MustClick(ctx *dgctx.DgContext) {
 }
 
 func (l *ExtLocator) HasClass(ctx *dgctx.DgContext, class string) bool {
-	cls := l.MustGetAttribute(ctx, "class")
+	cls := l.MustAttribute(ctx, "class")
 	if cls == "" {
 		return false
 	}

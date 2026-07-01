@@ -41,7 +41,9 @@ func TestBossScraper(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer extPage.Close()
+	defer func() {
+		_ = extPage.Close(ctx)
+	}()
 
 	url := "https://www.zhipin.com/gongsi/job/480261c022ea03d81nV53tQ~.html?ka=company-jobs"
 	err = extPage.NavigateWithLoadedState(ctx, url)
