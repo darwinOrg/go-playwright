@@ -347,6 +347,17 @@ func (p *ExtPage) Click(ctx *dgctx.DgContext, selector string) error {
 	return nil
 }
 
+func (p *ExtPage) ExecuteScript(ctx *dgctx.DgContext, expression string, args ...any) (any, error) {
+	p.CheckSuspend(ctx)
+	val, err := p.Page.Evaluate(expression, args...)
+	if err != nil {
+		dglogger.Errorf(ctx, "Page.Evaluate[%s] error: %v", expression, err)
+		return nil, err
+	}
+
+	return val, nil
+}
+
 func (p *ExtPage) Suspend() {
 	p.suspended = true
 }
