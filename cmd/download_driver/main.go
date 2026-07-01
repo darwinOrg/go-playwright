@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/playwright-community/playwright-go"
 	"log"
+
+	"github.com/mxschmitt/playwright-go"
 )
 
 func main() {
