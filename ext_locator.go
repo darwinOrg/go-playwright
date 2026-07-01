@@ -23,6 +23,10 @@ func NewExtLocator(extPage *ExtPage, locator playwright.Locator, selectors []str
 	}
 }
 
+func (l *ExtLocator) ExtPage() *ExtPage {
+	return l.extPage
+}
+
 func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
 	return &ExtLocator{
 		extPage:   l.extPage,
