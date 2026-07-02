@@ -136,7 +136,7 @@ func (l *ExtLocator) ExtAll(ctx *dgctx.DgContext) ([]*ExtLocator, error) {
 
 	extLocators := make([]*ExtLocator, count)
 	for i := 0; i < count; i++ {
-		selector := fmt.Sprintf("%s::nth-child(%d)", l.selector, i+1)
+		selector := fmt.Sprintf("%s:nth-child(%d)", l.selector, i+1)
 		extLocators[i] = l.extPage.ExtLocator(selector)
 	}
 
