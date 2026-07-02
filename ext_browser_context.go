@@ -3,6 +3,7 @@ package extpw
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	dgcoll "github.com/darwinOrg/go-common/collection"
 	dgctx "github.com/darwinOrg/go-common/context"
@@ -44,9 +45,12 @@ func NewDebugExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOpti
 		}
 	}
 
+	launchArgs := extPwOpt.GetLaunchArgs()
+	launchArgs = append(launchArgs, "--remoteDebuggingPort", strconv.Itoa(remoteDebuggingPort))
+
 	browserContext, err := pw.Chromium.LaunchPersistentContext(extPwOpt.UserDataDir,
 		playwright.BrowserTypeLaunchPersistentContextOptions{
-			Args:              extPwOpt.GetLaunchArgs(fmt.Sprintf("--remote-debugging-port=%d", remoteDebuggingPort)),
+			Args:              launchArgs,
 			NoViewport:        playwright.Bool(true),
 			IgnoreDefaultArgs: extPwOpt.IgnoreDefaultArgs,
 			ExecutablePath:    playwright.String(extPwOpt.mustGetBrowserPath()),
