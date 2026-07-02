@@ -303,31 +303,22 @@ func (p *ExtPage) HtmlContent(ctx *dgctx.DgContext) string {
 	return content
 }
 
-func (p *ExtPage) ExtLocator(selectors ...string) *ExtLocator {
-	var locator playwright.Locator
-	for _, selector := range selectors {
-		if locator == nil {
-			locator = p.Locator(selector)
-		} else {
-			locator = locator.Locator(selector)
-		}
-	}
-
+func (p *ExtPage) ExtLocator(selector string) *ExtLocator {
 	return &ExtLocator{
-		extPage:   p,
-		Locator:   locator,
-		selectors: selectors,
+		extPage:  p,
+		Locator:  p.Locator(selector),
+		selector: selector,
 	}
 }
 
-func (p *ExtPage) MustInnerText(ctx *dgctx.DgContext, selectors ...string) string {
-	locator := p.ExtLocator(selectors...)
+func (p *ExtPage) MustInnerText(ctx *dgctx.DgContext, selector string) string {
+	locator := p.ExtLocator(selector)
 
 	return locator.MustInnerText(ctx)
 }
 
-func (p *ExtPage) MustTextContent(ctx *dgctx.DgContext, selectors ...string) string {
-	locator := p.ExtLocator(selectors...)
+func (p *ExtPage) MustTextContent(ctx *dgctx.DgContext, selector string) string {
+	locator := p.ExtLocator(selector)
 
 	return locator.MustTextContent(ctx)
 }

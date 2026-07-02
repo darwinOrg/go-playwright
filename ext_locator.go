@@ -1,6 +1,7 @@
 package extpw
 
 import (
+	"fmt"
 	"strings"
 
 	dgcoll "github.com/darwinOrg/go-common/collection"
@@ -12,14 +13,14 @@ import (
 type ExtLocator struct {
 	extPage *ExtPage
 	playwright.Locator
-	selectors []string
+	selector string
 }
 
-func NewExtLocator(extPage *ExtPage, locator playwright.Locator, selectors []string) *ExtLocator {
+func NewExtLocator(extPage *ExtPage, locator playwright.Locator, selector string) *ExtLocator {
 	return &ExtLocator{
-		extPage:   extPage,
-		Locator:   locator,
-		selectors: selectors,
+		extPage:  extPage,
+		Locator:  locator,
+		selector: selector,
 	}
 }
 
@@ -29,22 +30,22 @@ func (l *ExtLocator) ExtPage() *ExtPage {
 
 func (l *ExtLocator) ExtLocator(selector string) *ExtLocator {
 	return &ExtLocator{
-		extPage:   l.extPage,
-		Locator:   l.Locator.Locator(selector),
-		selectors: append(l.selectors, selector),
+		extPage:  l.extPage,
+		Locator:  l.Locator.Locator(selector),
+		selector: fmt.Sprintf("%s %s", l.selector, selector),
 	}
 }
 
 func (l *ExtLocator) Exists(ctx *dgctx.DgContext) bool {
 	defer func() {
 		if err := recover(); err != nil {
-			dglogger.Errorf(ctx, "ExtLocator.Exists[%s] panic: %v", strings.Join(l.selectors, " "), err)
+			dglogger.Errorf(ctx, "ExtLocator.Exists[%s] panic: %v", l.selector, err)
 		}
 	}()
 
 	count, err := l.Locator.Count()
 	if err != nil {
-		dglogger.Errorf(ctx, "locator[%s] count error: %v", strings.Join(l.selectors, " "), err)
+		dglogger.Errorf(ctx, "locator[%s] count error: %v", l.selector, err)
 		return false
 	}
 	return count > 0
@@ -57,7 +58,7 @@ func (l *ExtLocator) MustInnerText(ctx *dgctx.DgContext) string {
 
 	text, err := l.Locator.InnerText()
 	if err != nil {
-		dglogger.Errorf(ctx, "locator[%s] inner text error: %v", strings.Join(l.selectors, " "), err)
+		dglogger.Errorf(ctx, "locator[%s] inner text error: %v", l.selector, err)
 	}
 	return strings.TrimSpace(text)
 }
@@ -80,7 +81,7 @@ func (l *ExtLocator) MustTextContent(ctx *dgctx.DgContext) string {
 
 	text, err := l.Locator.TextContent()
 	if err != nil {
-		dglogger.Errorf(ctx, "locator[%s] text content error: %v", strings.Join(l.selectors, " "), err)
+		dglogger.Errorf(ctx, "locator[%s] text content error: %v", l.selector, err)
 	}
 	return strings.TrimSpace(text)
 }
@@ -103,7 +104,7 @@ func (l *ExtLocator) MustAttribute(ctx *dgctx.DgContext, attr string) string {
 
 	text, err := l.Locator.GetAttribute(attr)
 	if err != nil {
-		dglogger.Errorf(ctx, "locator[%s] get attribute error: %v", strings.Join(l.selectors, " "), err)
+		dglogger.Errorf(ctx, "locator[%s] get attribute error: %v", l.selector, err)
 	}
 	return strings.TrimSpace(text)
 }
@@ -124,26 +125,29 @@ func (l *ExtLocator) ExtAll(ctx *dgctx.DgContext) ([]*ExtLocator, error) {
 		return []*ExtLocator{}, nil
 	}
 
-	allLocators, err := l.Locator.All()
+	count, err := l.Locator.Count()
 	if err != nil {
-		dglogger.Errorf(ctx, "locator[%s] all error: %v", strings.Join(l.selectors, " "), err)
+		dglogger.Errorf(ctx, "locator[%s] all error: %v", l.selector, err)
 		return nil, err
 	}
+	if count == 0 {
+		return []*ExtLocator{}, nil
+	}
 
-	return dgcoll.MapToList(allLocators, func(locator playwright.Locator) *ExtLocator {
-		return &ExtLocator{
-			extPage:   l.extPage,
-			Locator:   locator,
-			selectors: l.selectors,
-		}
-	}), nil
+	extLocators := make([]*ExtLocator, count)
+	for i := 0; i < count; i++ {
+		selector := fmt.Sprintf("%s:nth(%d)", l.selector, i)
+		extLocators[i] = l.extPage.ExtLocator(selector)
+	}
+
+	return extLocators, nil
 }
 
 func (l *ExtLocator) MustClick(ctx *dgctx.DgContext) {
 	l.CheckSuspend(ctx)
 	err := l.Click()
 	if err != nil {
-		dglogger.Errorf(ctx, "locator[%s] click error: %v", strings.Join(l.selectors, " "), err)
+		dglogger.Errorf(ctx, "locator[%s] click error: %v", l.selector, err)
 	}
 }
 
@@ -161,8 +165,8 @@ func (l *ExtLocator) HasClass(ctx *dgctx.DgContext, class string) bool {
 	return cls == class
 }
 
-func (l *ExtLocator) GetSelectors() []string {
-	return l.selectors
+func (l *ExtLocator) GetSelector() string {
+	return l.selector
 }
 
 func (l *ExtLocator) Suspend() {

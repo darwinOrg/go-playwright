@@ -1,1 +1,0 @@
-go run github.com/mxschmitt/playwright-go/cmd/playwright@latest install --with-deps

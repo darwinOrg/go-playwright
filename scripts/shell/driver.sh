@@ -1,1 +1,0 @@
-go run cmd/download_driver/main.go
