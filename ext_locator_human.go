@@ -44,7 +44,7 @@ func WithMouseSpeed(speed float64) HumanLikeMouseOption {
 func (l *ExtLocator) HumanLikeMoveToSelector(ctx *dgctx.DgContext, options ...HumanLikeMouseOption) error {
 	defer func() {
 		if err := recover(); err != nil {
-			dglogger.Errorf(ctx, "HumanLikeMoveToSelector[%v] panic: %v", l.selectors, err)
+			dglogger.Errorf(ctx, "HumanLikeMoveToSelector[%v] panic: %v", l.selector, err)
 		}
 	}()
 
@@ -56,7 +56,7 @@ func (l *ExtLocator) HumanLikeMoveToSelector(ctx *dgctx.DgContext, options ...Hu
 	}
 
 	if !l.Exists(ctx) {
-		err := fmt.Errorf("selector[%v] not found", l.selectors)
+		err := fmt.Errorf("selector[%v] not found", l.selector)
 		dglogger.Errorf(ctx, "HumanLikeMoveToSelector: %v", err)
 		return err
 	}
@@ -67,7 +67,7 @@ func (l *ExtLocator) HumanLikeMoveToSelector(ctx *dgctx.DgContext, options ...Hu
 		return err
 	}
 	if bbox == nil {
-		err := fmt.Errorf("bounding box is nil for selector[%v]", l.selectors)
+		err := fmt.Errorf("bounding box is nil for selector[%v]", l.selector)
 		dglogger.Errorf(ctx, "HumanLikeMoveToSelector: %v", err)
 		return err
 	}
@@ -102,7 +102,7 @@ func (l *ExtLocator) HumanLikeMoveToSelector(ctx *dgctx.DgContext, options ...Hu
 func (l *ExtLocator) HumanLikeClick(ctx *dgctx.DgContext, options ...HumanLikeMouseOption) error {
 	defer func() {
 		if err := recover(); err != nil {
-			dglogger.Errorf(ctx, "HumanLikeClick[%v] panic: %v", l.selectors, err)
+			dglogger.Errorf(ctx, "HumanLikeClick[%v] panic: %v", l.selector, err)
 		}
 	}()
 
