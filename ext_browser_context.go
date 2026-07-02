@@ -51,8 +51,8 @@ func NewDebugExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOpti
 	browserContext, err := pw.Chromium.LaunchPersistentContext(extPwOpt.UserDataDir,
 		playwright.BrowserTypeLaunchPersistentContextOptions{
 			Args:              launchArgs,
-			NoViewport:        playwright.Bool(true),
 			IgnoreDefaultArgs: extPwOpt.IgnoreDefaultArgs,
+			NoViewport:        playwright.Bool(true),
 			ExecutablePath:    playwright.String(extPwOpt.mustGetBrowserPath()),
 			Headless:          playwright.Bool(extPwOpt.Headless),
 		})
@@ -127,8 +127,8 @@ func NewExtBrowserContext(ctx *dgctx.DgContext, extPwOpt *ExtPlaywrightOption) (
 		browserContext, err = browserType.LaunchPersistentContext(extPwOpt.UserDataDir,
 			playwright.BrowserTypeLaunchPersistentContextOptions{
 				Args:              extPwOpt.GetLaunchArgs(),
-				NoViewport:        playwright.Bool(true),
 				IgnoreDefaultArgs: extPwOpt.IgnoreDefaultArgs,
+				NoViewport:        playwright.Bool(true),
 				ExecutablePath:    executablePath,
 				Channel:           channel,
 				Headless:          playwright.Bool(extPwOpt.Headless),
