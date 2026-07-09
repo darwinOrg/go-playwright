@@ -42,8 +42,8 @@ func newBrowserContext(ctx *dgctx.DgContext) (*extpw.ExtBrowserContext, error) {
 
 	return extpw.NewExtBrowserContext(ctx, &extpw.ExtPlaywrightOption{
 		SkipInstallBrowsers: true,
-		UserDataDir:         os.Getenv("USER_DATA_DIR"),
 		BrowserPath:         cloakBrowserPath,
+		UserDataDir:         os.Getenv("USER_DATA_DIR"),
 		LaunchArgs:          launchArgs,
 	})
 }

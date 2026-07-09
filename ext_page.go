@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	defaultTimeoutMillis = 10_000.0
+	defaultTimeoutMillis = 20_000.0
 )
 
 type ExtPage struct {
